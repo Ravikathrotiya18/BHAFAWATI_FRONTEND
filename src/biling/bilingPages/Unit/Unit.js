@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import React from 'react';
 import './css/Unit.css'
 import { BACKEND_BASE_URL } from '../../../url';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import Table from '@mui/material/Table';
 import PropTypes from 'prop-types';
 import Backdrop from '@mui/material/Backdrop';
@@ -108,6 +108,7 @@ function Unit() {
     const [addVariant, setAddVariant] = React.useState(false);
     const [variantFields, setVariantFields] = React.useState([]);
     const [unitName, setUnitName] = React.useState();
+    const [loading, setLoading] = React.useState(false);
     const [updateCategory, setUpdateCategory] = React.useState(false)
     const [error, setError] = React.useState(false);
     const [success, setSuccess] = React.useState(false);
@@ -120,6 +121,50 @@ function Unit() {
     }
     const removeVariantField = () => {
         setVariantFields(variantFields.filter((_, index) => index));
+    }
+    if (loading) {
+        console.log('>>>>??')
+        toast.loading("Please wait...", {
+            toastId: 'loading'
+        })
+    }
+    if (success) {
+        toast.dismiss('loading');
+        toast('success',
+            {
+                type: 'success',
+                toastId: 'success',
+                position: "top-right",
+                toastId: 'error',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "colored",
+            });
+        setTimeout(() => {
+            setSuccess(false)
+            setLoading(false);
+        }, 50)
+    }
+    if (error) {
+        setLoading(false);
+        toast.dismiss('loading');
+        toast(error, {
+            type: 'error',
+            position: "top-right",
+            toastId: 'error',
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+        });
+        setError(false);
     }
     const handleEdit = (index) => {
         setEditIndex(index);
@@ -145,6 +190,7 @@ function Unit() {
             if (response.data === 'Unit Added Successfully') {
                 setUnitName('');
                 getAllCategory();
+                setSuccess('')
             }
         } catch (error) {
             console.log(error);
@@ -167,6 +213,9 @@ function Unit() {
             updatedUnitList[index] = unitName;
             setGetAllUnit(updatedUnitList);
             setEditIndex(-1);
+            if(response.data === 'Unit Updated Successfullu'){
+                setSuccess('Unit Updated Successfully')
+            }
         } catch (error) {
             console.log(error)
         }

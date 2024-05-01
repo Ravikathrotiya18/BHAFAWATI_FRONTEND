@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { BACKEND_BASE_URL } from '../../../url';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -84,6 +84,9 @@ function SubCategory() {
     const [categoryRank, setCategoryRank] = useState('');
     const [mainCategoryId, setMainCategoryId] = useState();
     const [openTime, setOpenTime] = useState(false);
+    const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState(false);
+    const [success, setSuccess] = React.useState(false);
     const [time, setTime] = useState({ from: null, to: null });
     const [totalRows, setTotalRows] = React.useState(0);
     const [rowsPerPage, setRowsPerPage] = React.useState(10);
@@ -116,7 +119,7 @@ function SubCategory() {
     const handleCategoryId = (object) => {
         const periods = object.periods;
         setVariantFields(periods)
-        if(periods.length === 0 ){
+        if (periods.length === 0) {
             setViewMode(false)
             setTimeEdit(true)
         }
@@ -158,6 +161,50 @@ function SubCategory() {
         setTimeEdit(false)
         setCategoryName('');
     }
+    if (loading) {
+        console.log('>>>>??')
+        toast.loading("Please wait...", {
+            toastId: 'loading'
+        })
+    }
+    if (success) {
+        toast.dismiss('loading');
+        toast('success',
+            {
+                type: 'success',
+                toastId: 'success',
+                position: "top-right",
+                toastId: 'error',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                theme: "colored",
+            });
+        setTimeout(() => {
+            setSuccess(false)
+            setLoading(false);
+        }, 50)
+    }
+    if (error) {
+        setLoading(false);
+        toast.dismiss('loading');
+        toast(error, {
+            type: 'error',
+            position: "top-right",
+            toastId: 'error',
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "colored",
+        });
+        setError(false);
+    }
 
     const handleOpen = () => setOpen(true);
 
@@ -177,6 +224,7 @@ function SubCategory() {
             if (response.data === 'Category Added Successfully') {
                 handleClose();
                 getAllCategory();
+                setSuccess('Category Added Successfully')
             }
         } catch (error) {
             console.log(error);
@@ -208,15 +256,18 @@ function SubCategory() {
             setCategories(updatedCategories);
             setEditIndex(-1);
             getAllCategory();
+            if(response.data === 'Category Updated Successfully'){
+                setSuccess('Category Updated Successfully')
+            }
         } catch (error) {
             console.log(error);
         }
     };
     const handleTimeEditing = () => {
-        if (variantFields.length > 0 && !timeEdit ) {
+        if (variantFields.length > 0 && !timeEdit) {
             setTimeEdit(true);
         }
-        else{
+        else {
             setTimeEdit(false)
         }
         if (timeEdit === false) {
@@ -519,6 +570,7 @@ function SubCategory() {
                     </Box>
                 </Fade>
             </Modal>
+            <ToastContainer />
         </div>
     );
 }
