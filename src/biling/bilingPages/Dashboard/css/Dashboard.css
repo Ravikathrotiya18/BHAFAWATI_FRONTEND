@@ -11,6 +11,9 @@
 .table_Actions_icon2:hover .table_icon2 {
     color: white !important;
 }
+.css-1wnsr1i.addProdutModal{
+    width: 85% !important;
+}
 
 .table_icon2 {
     height: 20px !important;
@@ -223,10 +226,66 @@
 }
 .ClickedBlueBg{
     background-color: #2563eb;
-    font-weight: bold;
+    font-weight: 500;
 }
 .restaurantMenu{
     font-size: 179px !important;
     color: gray;
     margin-top: 140px;
+}
+
+.carousel-inner {
+    display: flex;
+    transition: transform 0.5s ease;
+}
+
+.carousel {
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+}
+
+.card {
+    display: inline-block;
+    width: 75% !important;
+    margin-right: 10px;
+}
+
+
+.prev-btn,
+.next-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    z-index: 1;
+}
+
+.prev-btn {
+    left: 0;
+}
+
+.next-btn {
+    right: 0;
+}
+
+::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }

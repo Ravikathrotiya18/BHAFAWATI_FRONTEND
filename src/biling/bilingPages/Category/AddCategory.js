@@ -1,6 +1,6 @@
 /* eslint-disable no-dupe-keys */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BACKEND_BASE_URL } from '../../../url';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -10,6 +10,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Backdrop from '@mui/material/Backdrop';
 import Paper from '@mui/material/Paper';
+import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import BorderColorIcon from '@mui/icons-material/BorderColor';
 import Modal from '@mui/material/Modal';
@@ -78,6 +79,10 @@ function AddCategory() {
     const [error, setError] = React.useState(false);
     const [success, setSuccess] = React.useState(false);
     const [feildError, setFeildError] = useState(false)
+    const autFocus = useRef(null)
+    const [catgoryUpdateData, setCategoryUpdateData] = useState();
+    const [categoryUpdatePopUp, setCategoryUpdatePopUp] = useState(false)
+    const [categoryUpdateName, setCategoryUpdateName] = useState();
 
     useEffect(() => {
         getAllCategory();
@@ -92,7 +97,7 @@ function AddCategory() {
             });
             setCategories(response.data);
         } catch (error) {
-            console.error("Error:", error);
+            setError(error.response.data)
         }
     }
 
@@ -100,9 +105,10 @@ function AddCategory() {
         setOpen(false);
         setCategoryName('');
         setError(false)
+        setCategoryUpdatePopUp(false);
+        setFeildError(false)
     }
     if (loading) {
-        console.log('>>>>??')
         toast.loading("Please wait...", {
             toastId: 'loading'
         })
@@ -153,7 +159,6 @@ function AddCategory() {
             setError('Category Have to Be Filled')
             return;
         }
-        console.log(error)
         try {
             const token = localStorage.getItem('token');
             const response = await axios.post(`${BACKEND_BASE_URL}menuItemrouter/addMainCategory`, {
@@ -163,29 +168,34 @@ function AddCategory() {
                     Authorization: `Bearer ${token}`
                 }
             });
-            console.log(response.data);
             if (response.data === 'Category Added Successfully') {
-                handleClose();
+                setCategoryName('')
                 getAllCategory();
+                setSuccess('Category Added Successfully')
+                autFocus.current && autFocus.current.focus();
             }
         } catch (error) {
-            console.log(error);
+            if (error.response.data === 'Category is Already In Use') {
+                setError('Category is Already In Use')
+                autFocus.current && autFocus.current.focus();
+            }
+            setError(error.response.data)
         }
     }
-
-    const handleEdit = (index) => {
-        setEditIndex(index);
-        setCategoryName(categories[index].categoryName);
-    }
     const handleUpdateUnit = async (index) => {
+        if (!categoryUpdateName.trim()) {
+            setFeildError(true)
+            setError('Category Have to Be Filled')
+            return;
+        }
         const token = localStorage.getItem('token');
         try {
             const category = categories[index];
             const response = await axios.post(
                 `${BACKEND_BASE_URL}menuItemrouter/updateMainCategory`,
                 {
-                    categoryId: category.categoryId,
-                    categoryName: categoryName
+                    categoryId: catgoryUpdateData.categoryId,
+                    categoryName: categoryUpdateName
                 },
                 {
                     headers: {
@@ -193,42 +203,61 @@ function AddCategory() {
                     }
                 }
             );
-            console.log(response.data);
-            const updatedCategories = [...categories];
-            updatedCategories[index].categoryName = response.data.updatedCategory;
-            setCategories(updatedCategories);
-            setEditIndex(-1);
-            getAllCategory();
+            if (response.data === 'Category Updated Successfully') {
+                setEditIndex(-1);
+                getAllCategory();
+                setSuccess('Category Updated Successfully')
+                handleClose();
+            }
         } catch (error) {
-            console.log(error);
+            setError(error.response.data)
         }
     };
+    const handleDeleteCategory = async (category) => {
+        const token = localStorage.getItem('token')
+        const password = '123'
+        const enteredPassword = prompt('Please Enter The Password');
+        if (enteredPassword !== password) {
+            alert('Incorrect password. Operation aborted.');
+            return;
+        }
+        if (enteredPassword === password) {
+            try {
+                const id = category.categoryId
+                const response = await axios.delete(
+                    `${BACKEND_BASE_URL}menuItemrouter/removeMainCategory?categoryId=${id}`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+                )
+                if (response.data === 'Category Deleted Successfully') {
+                    setSuccess('Category Deleted Successfully')
+                    getAllCategory();
+                }
+            } catch (error) {
+                setError(error.response.data)
+            }
+        }
+
+    }
 
     return (
-        <div className='BilingDashboardContainer p-3'>
-            <div className='grid grid-cols-12'>
-                <div className='col-span-12'>
+        <div className='BilingDashboardContainer mx-4 p-3'>
+            <div className='grid grid-cols-12 mt-3'>
+                <div className='col-span-12 '>
                     <div className='productTableSubContainer'>
                         <div className='h-full grid grid-cols-12'>
                             <div className='h-full mobile:col-span-10  tablet1:col-span-10  tablet:col-span-7  laptop:col-span-7  desktop1:col-span-7  desktop2:col-span-7  '>
                                 <div className='grid grid-cols-12 pl-6 g h-full'>
                                     <div className={`flex col-span-3 justify-center ${tab === null || tab === '' || !tab ? 'productTabAll' : 'productTab'}`} onClick={() => { setTab(null); setSearchWord(''); setDataSearch([]) }}>
-                                        <div className='statusTabtext'>All</div> &nbsp;&nbsp; <div className={`ProductCount ${tab === null || tab === '' || !tab ? 'blueCount' : ''}`}>{countData && countData.allProduct ? countData.allProduct : 0}</div>
-                                    </div>
-                                    <div className={`flex col-span-3 justify-center ${tab === 1 || tab === '1' ? 'productTabIn' : 'productTab'}`} onClick={() => { setTab(1); setSearchWord(''); setDataSearch([]) }}>
-                                        <div className='statusTabtext'>In-Stock</div> &nbsp;&nbsp; <div className={`ProductCount ${tab === 1 || tab === '1' ? 'greenCount' : ''}`}>{countData && countData.instockProduct ? countData.instockProduct : 0}</div>
-                                    </div>
-                                    <div className={`flex col-span-3 justify-center ${tab === 2 || tab === '2' ? 'productTabUnder' : 'productTab'}`} onClick={() => { setTab(2); setSearchWord(''); setDataSearch([]) }}>
-                                        <div className='statusTabtext'>Low-Stock</div> &nbsp;&nbsp; <div className={`ProductCount ${tab === 2 || tab === '2' ? 'orangeCount' : ''}`}>{countData && countData.underStockedProduct ? countData.underStockedProduct : 0}</div>
-                                    </div>
-                                    <div className={`flex col-span-3 justify-center ${tab === 3 || tab === '3' ? 'productTabOut' : 'productTab'}`} onClick={() => { setTab(3); setSearchWord(''); setDataSearch([]) }}>
-                                        <div className='statusTabtext'>Out-Stock</div> &nbsp;&nbsp; <div className={`ProductCount ${tab === 3 || tab === '3' ? 'redCount' : ''}`}>{countData && countData.outOfStock ? countData.outOfStock : 0}</div>
+                                        <div className='statusTabtext'>All Categories</div>
                                     </div>
                                 </div>
                             </div>
                             <div className=' grid col-span-2 col-start-11 pr-3  h-full'>
                                 <div className='self-center justify-self-end'>
-                                    <button className='addProductBtn' onClick={handleOpen}>Add Unit</button>
+                                    <button className='addProductBtn' onClick={handleOpen}>Add Category</button>
                                 </div>
                             </div>
                         </div>
@@ -236,43 +265,52 @@ function AddCategory() {
                 </div>
             </div>
             <ToastContainer />
-            <div className='tableContainerWrapper'>
-                <Table aria-label="simple table">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {categories.map((category, index) => (
-                            <TableRow key={index}>
-                                <TableCell component="th" scope="row">
-                                    {editIndex === index ?
-                                        <TextField onChange={(e) => setCategoryName(e.target.value)} value={categoryName} label="Category Name" variant="outlined" className="w-full col-span-3 mb-6" />
-                                        :
-                                        category.categoryName
-                                    }
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex w-100">
-                                        {editIndex === index ?
-                                            <div onClick={() => handleUpdateUnit(index)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-blue-600'>
-                                                <CheckIcon className='text-gray-600 table_icon2' />
+            {categories.length > 0 ? (
+                <div className='tableContainerWrapper'>
+                    <TableContainer className='bg-white px-4 pt-6 border-none rounded-xl mt-7'>
+                        <Table aria-label="simple table" component={Paper} >
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>No</TableCell>
+                                    <TableCell>Name</TableCell>
+                                    <TableCell align='right' >Actions</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {categories.map((category, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell component="th" scope="row" style={{ maxWidth: '15px', width: '15px' }}>
+                                            {index + 1}
+                                        </TableCell>
+                                        <TableCell component="th" scope="row">
+                                            {category.categoryName}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex w-100 justify-end">
+                                                <div onClick={() => { setCategoryUpdatePopUp(true); setCategoryUpdateData(category); setCategoryUpdateName(category.categoryName) }} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 border hover:bg-blue-600'>
+                                                    <BorderColorIcon className='text-gray-600 table_icon2' />
+                                                </div>
+                                                <div onClick={() => handleDeleteCategory(category)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-red-600 border'><DeleteOutlineOutlinedIcon className='text-gray-600 table_icon2 ' /></div>
                                             </div>
-                                            :
-                                            <div onClick={() => handleEdit(index)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-blue-600'>
-                                                <BorderColorIcon className='text-gray-600 table_icon2' />
-                                            </div>
-                                        }
-                                        <div className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-red-600'><DeleteOutlineOutlinedIcon className='text-gray-600 table_icon2 ' /></div>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </div>
+            ) : (
+                <div className="w-full flex justify-center">
+                    <div className='text-center'>
+                        <RestaurantMenuIcon className='restaurantMenu' />
+                        <br />
+                        <div className="text-2xl text-gray">
+                            No Data Found
+                        </div>
+                    </div>
+                </div>
+            )
+            }
             <Modal
                 open={open}
                 onClose={handleClose}
@@ -285,23 +323,71 @@ function AddCategory() {
                         <div className="bg-white w-full">
                             <div className="w-full mb-4">Add Category</div>
                             <hr className='mb-4' />
-                            <div className="mb-4 grid grid-cols-12 gap-8">
-                            <TextField
-                                    onChange={(e) => {
-                                        setCategoryName(e.target.value);
-                                        setFeildError(false);
-                                    }}
-                                    id="categoryName"
-                                    label="Category Name"
-                                    variant="outlined"
-                                    className="w-full col-span-3 mb-6"
-                                    error={feildError ? true : false} 
-                                    helperText={feildError ? 'Category name cannot be empty' : ''}
-                                />
+                            <div className="flex mt-2 gap-4">
+                                <div className="w-2/5">
+                                    <TextField
+                                        onChange={(e) => {
+                                            setCategoryName(e.target.value);
+                                            setFeildError(false);
+                                        }}
+                                        id="categoryName"
+                                        label="Category Name"
+                                        variant="outlined"
+                                        autoComplete="off"
+                                        value={categoryName}
+                                        className="w-full col-span-3 mb-6"
+                                        error={feildError ? true : false}
+                                        helperText={feildError ? 'Category name cannot be empty' : ''}
+                                        inputRef={autFocus}
+                                    />
+                                </div>
+                                <div className="w-1/4">
+                                    <button onClick={() => handleCreateCategory()} className="addCategorySaveBtn ml-4">Save</button>
+                                </div>
+                                <div className="w-1/4">
+                                    <button onClick={() => handleClose()} className="addCategoryCancleBtn ml-4 bg-gray-700">Cancel</button>
+                                </div>
                             </div>
-                            <div className="my-2 mt-4">
-                                <button onClick={handleCreateCategory} className="bg-green-500 text-white py-2 px-4 rounded-lg mr-2">Save</button>
-                                <button onClick={handleClose} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">Cancel</button>
+                        </div>
+                    </Box>
+                </Fade>
+            </Modal>
+            <Modal
+                open={categoryUpdatePopUp}
+                onClose={handleClose}
+                aria-labelledby="spring-modal-title"
+                aria-describedby="spring-modal-description"
+                closeAfterTransition
+            >
+                <Fade in={categoryUpdatePopUp}>
+                    <Box sx={style}>
+                        <div className="bg-white w-full">
+                            <div className="w-full mb-4">Edit Category</div>
+                            <hr className='mb-4' />
+                            <div className="flex mt-2 gap-4">
+                                <div className="w-2/5">
+                                    <TextField
+                                        onChange={(e) => {
+                                            setCategoryUpdateName(e.target.value);
+                                            setFeildError(false);
+                                        }}
+                                        id="categoryName"
+                                        label="Category Name"
+                                        variant="outlined"
+                                        autoComplete="off"
+                                        value={categoryUpdateName}
+                                        className="w-full col-span-3 mb-6"
+                                        error={feildError ? true : false}
+                                        helperText={feildError ? 'Category name cannot be empty' : ''}
+                                        inputRef={autFocus}
+                                    />
+                                </div>
+                                <div className="w-1/4">
+                                    <button onClick={() => handleUpdateUnit()} className="addCategorySaveBtn ml-4">Save</button>
+                                </div>
+                                <div className="w-1/4">
+                                    <button onClick={() => handleClose()} className="addCategoryCancleBtn ml-4 bg-gray-700">Cancel</button>
+                                </div>
                             </div>
                         </div>
                     </Box>
