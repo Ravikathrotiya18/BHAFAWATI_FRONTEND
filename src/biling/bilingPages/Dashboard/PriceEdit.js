@@ -5,7 +5,7 @@
 /* eslint-disable no-unreachable */
 /* eslint-disable no-unused-vars */
 import './css/Dashboard.css';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import React from 'react';
 import { BACKEND_BASE_URL } from '../../../url';
 import Table from '@mui/material/Table';
@@ -32,6 +32,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import { FilledInput, FormControlLabel, FormHelperText, FormLabel, Input, InputAdornment, Paper, Radio, RadioGroup, Switch } from '@mui/material';
+import { ReactTransliterate } from 'react-transliterate';
 
 const Fade = React.forwardRef(function Fade(props, ref) {
     const {
@@ -149,6 +150,30 @@ function Dashboard() {
             isView: true
         })
         setCopyMenuPopUp(false)
+        setFullData({
+            itemName: '',
+            itemGujaratiName: '',
+            itemCode: '',
+            itemShortKey: '',
+            itemSubCategory: '',
+            itemDescription: '',
+            variantsList: []
+        })
+        setAllFormValidation({
+            itemName: false,
+            itemGujaratiName: false,
+            itemCode: false,
+            price: false,
+            itemShortKey: false,
+            itemSubCategory: false,
+            itemDescription: false,
+            variantsList: {
+                unit: false,
+                price: false
+            }
+        })
+        setVariantFields([]);
+        setPrice(null)
     }
     const [dataSearch, setDataSearch] = React.useState();
     const [sideBarColor, setSideBarColor] = useState(false);
@@ -165,7 +190,7 @@ function Dashboard() {
     const [unit, setUnit] = React.useState({ unit: '', price: '', status: true });
     const [subCategoryId, setSubCategoryId] = useState(null);
     const [menuCategory, setMenuCategory] = useState([]);
-    const [menuId, setMenuId] = useState('menuCategory_1713785180891');
+    const [menuId, setMenuId] = useState('base_2001');
     const [fullData, setFullData] = useState({
         itemName: '',
         itemGujaratiName: '',
@@ -185,6 +210,7 @@ function Dashboard() {
     const [toggle, setToggle] = useState(false)
     const [success, setSuccess] = React.useState(false);
     const [editPricePopUp, setEditPricePopUp] = useState(false)
+
     const [editPriceType, setEditPriceType] = useState({
         percentage: true,
         fixed: false
@@ -219,7 +245,6 @@ function Dashboard() {
     const [variantsUpdatedData, setVariantsUpdatedData] = useState({
         unit: '',
         price: ''
-        // status:false
     })
     const [secondVariantData, setSecondVariantData] = useState({
         unit: '',
@@ -227,7 +252,7 @@ function Dashboard() {
         status: true
     })
     const [varinatsItemObject, setVariantsItemObject] = useState([]);
-    const [itemDataNull, setItemDataNull] = useState(false);
+    const [itemDataNull, setItemDataNull] = useState(true);
     const [variantsFullData, setVariantsFullData] = useState({
         itemName: '',
         itemGujaratiName: '',
@@ -241,9 +266,12 @@ function Dashboard() {
     const [menuName, setMenuName] = useState('')
     const [copyMenuPopUp, setCopyMenuPopUp] = useState(false)
     const [copyMenuItems, setCopyMenuItems] = useState([])
+    const [price, setPrice] = useState();
     const [copyMenuCheckBox, setCopyMenuCheckBox] = useState(false)
+    const [updatedVarintsName, setUpdatedVariantsName] = useState();
+    const [finalSelected, setFinalSelected] = useState();
+    const autoFocus = useRef(null)
     if (loading) {
-        console.log('>>>>??')
         toast.loading("Please wait...", {
             toastId: 'loading'
         })
@@ -292,7 +320,6 @@ function Dashboard() {
             itemGujaratiName: fullData.itemGujaratiName.trim().length === 0,
             itemCode: fullData.itemCode.trim().length === 0,
             itemShortKey: fullData.itemShortKey.trim().length === 0,
-            itemDescription: fullData.itemDescription.trim().length === 0,
             itemSubCategory: !fullData.itemSubCategory,
             variantsList: fullData.variantsList.length === 0 || fullData.variantsList.some(variant => variant.unit.trim().length === 0 || variant.price.trim().length === 0)
         };
@@ -327,13 +354,29 @@ function Dashboard() {
                     itemDescription: '',
                     variantsList: []
                 })
+                setPrice(null)
+                autoFocus.current && autoFocus.current.focus();
+                setAllFormValidation({
+                    itemName: false,
+                    itemGujaratiName: false,
+                    itemCode: false,
+                    price: false,
+                    itemShortKey: false,
+                    itemSubCategory: false,
+                    itemDescription: false,
+                    variantsList: {
+                        unit: false,
+                        price: false
+                    }
+                })
+                setVariantFields([]);
+                getAllCategory();
+                handleSubCategoryClick(finalSelected)
+                getAllUnits();
+                getAllItems(menuId);
             }
         } catch (error) {
-            setError('An error occurred while submitting the form');
-            if (error.response.data === 'Item Name is Already In Use') {
-                setError('Item name is Already Exist')
-                
-            }
+            setError(error?.response?.data || 'Network Error!!!...')
         }
     };
     const getAllCategory = async () => {
@@ -347,7 +390,7 @@ function Dashboard() {
             setMenuCategory(response.data)
             setMenuId(response.data[0].menuCategoryId)
         } catch (error) {
-            console.error("Error:", error);
+            setError(error?.response?.data || 'Network Error!!!...')
         }
     }
     const getAllItems = async (menuId) => {
@@ -362,11 +405,8 @@ function Dashboard() {
                     Authorization: `Bearer ${token}`
                 }
             });
-            if (response.statusText === 'OK') {
-                handleSubCategoryClick(clickedSubCategory)
-            }
         } catch (error) {
-            console.error(error);
+            setError(error?.response?.data || 'Network Error!!!...')
         }
     };
     const handleItemDelete = async (id) => {
@@ -385,17 +425,21 @@ function Dashboard() {
                         Authorization: `Bearer ${token}`
                     }
                 })
-                getAllItems();
+                setSuccess(response.data)
+                getAllCategory();
+                getAllUnits();
+                getAllItems(menuId);
             }
             catch (error) {
-                console.log(error)
+                setError(error?.response?.data || 'Network Error!!!...')
             }
         }
     }
     const handleOpen = () => setOpen(true);
     const addVariantFields = () => {
         const formValidation = {
-            variantsList: fullData.variantsList.length === 0 || fullData.variantsList.some(variant => variant.unit.trim().length === 0 || variant.price.trim().length === 0)
+            unit: unit.unit.trim().length === 0,
+            price: unit.price.trim().length === 0
         };
 
         setAllFormValidation(formValidation);
@@ -412,49 +456,113 @@ function Dashboard() {
         }));
         setUnit({ unit: '', price: '' })
     };
+    // const addDefaultVariant = (defaultPrice) => {
+    //     setAddVariant(false);
+    //     const defaultUnit = 'NO';
+    //     let variantUpdated = false;
+
+    //     const updatedVariantFields = variantFields.map((val) => {
+    //         if (val.variantName === defaultUnit) {
+    //             variantUpdated = true;
+    //             return { ...val, variantPrice: defaultPrice };
+    //         }
+    //         return val;
+    //     });
+
+    //     if (!variantUpdated) {
+    //         updatedVariantFields.push({
+    //             variantName: defaultUnit,
+    //             variantPrice: defaultPrice,
+    //             index: variantFields.length
+    //         });
+    //     }
+
+    //     setVariantFields(updatedVariantFields);
+
+    //     setFullData(prevState => ({
+    //         ...prevState,
+    //         variantsList: [
+    //             ...prevState.variantsList.filter(v => v.unit !== defaultUnit),
+    //             { unit: defaultUnit, price: defaultPrice, status: true }
+    //         ]
+    //     }));
+
+    //     setAddVariant(true);
+    // };
+
     const addDefaultVariant = (defaultPrice) => {
         setAddVariant(false);
         const defaultUnit = 'NO';
-        setVariantFields([{ variantName: defaultUnit, variantPrice: defaultPrice, index: 0 }]);
+        let updatedVariantFields;
+
+        if (defaultPrice.trim() === '') {
+            updatedVariantFields = variantFields.filter(val => val.variantName !== defaultUnit);
+        } else {
+            let variantUpdated = false;
+
+            updatedVariantFields = variantFields.map((val) => {
+                if (val.variantName === defaultUnit) {
+                    variantUpdated = true;
+                    return { ...val, variantPrice: defaultPrice };
+                }
+                return val;
+            });
+
+            if (!variantUpdated) {
+                updatedVariantFields.push({
+                    variantName: defaultUnit,
+                    variantPrice: defaultPrice,
+                    index: variantFields.length
+                });
+            }
+        }
+
+        setVariantFields(updatedVariantFields);
+
         setFullData(prevState => ({
             ...prevState,
-            variantsList: [{ unit: defaultUnit, price: defaultPrice, status: true }]
+            variantsList: defaultPrice.trim() === ''
+                ? prevState.variantsList.filter(v => v.unit !== defaultUnit)
+                : [
+                    ...prevState.variantsList.filter(v => v.unit !== defaultUnit),
+                    { unit: defaultUnit, price: defaultPrice, status: true }
+                ]
         }));
-        setAddVariant(true)
+
+        setAddVariant(true);
     };
 
+
     const handleDelete = (index) => {
-        console.log('pre', variantFields, index)
         const updatedFields = variantFields.filter((_, i) => i !== index);
         setVariantFields(updatedFields);
     };
     const getSubCategory = async () => {
         try {
             const token = localStorage.getItem('token');
-            await axios.get(`${BACKEND_BASE_URL}menuItemrouter/ddlSubCategory`, {
+            const response = await axios.get(`${BACKEND_BASE_URL}menuItemrouter/ddlSubCategory`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
-            })
-                .then((res) => {
-                    setSubCategories(res.data)
-                    console.log('Sub CategoryId',res.data[0].subCategoryId)
-                    const subId = res.data[0].subCategoryId
-                    handleSubCategoryClick(subId)
-                })
-        } catch (error) {
-            console.error("Error:", error);
-        }
-    }
-    const handleEditItem = (id) => {
+            });
+            const subCategories = response.data;
+            setSubCategories(subCategories);
 
-        const itemToEdit = itemData.find(item => item.itemId === id);
-        const itemSubCategory = subCategories.find(subCategory => subCategory.subCategoryId === itemToEdit.itemSubCategory);
-        setEditData(itemToEdit);
-        console.log(editData)
-        setVariantsItemObject(itemToEdit)
-        setVariantEditData(itemToEdit.variantsList);
-        setSubCategoryName(itemSubCategory.subCategoryName);
+            if (subCategories.length > 0) {
+                const firstSubCategoryId = subCategories[0].subCategoryId;
+                handleSubCategoryClick(firstSubCategoryId);
+                setItemDataNull(false)
+            }
+        } catch (error) {
+            setError(error?.response?.data || 'Network Error!!!...')
+        }
+    };
+
+    const handleEditItem = (id) => {
+        setEditData(id);
+        setVariantsItemObject(id)
+        setVariantEditData(id.variantsList);
+        setSubCategoryName(id.subCategoryName);
         setEditItem(true);
     };
     const getAllUnits = async () => {
@@ -465,16 +573,16 @@ function Dashboard() {
                     Authorization: `Bearer ${token}`
                 }
             });
-            console.log(response.data);
             setGetAllUnit(response.data);
         } catch (error) {
-            console.error("Error:", error);
+            setError(error?.response?.data || 'Network Error!!!...')
         }
     }
 
     const handleSubCategoryClick = async (subCategoryId) => {
         setClickedSubCategory(subCategoryId);
         setSubCategoryFirstId(subCategoryId)
+        setFinalSelected(subCategoryId)
         const token = localStorage.getItem('token');
         try {
             setSideBarColor(true)
@@ -499,15 +607,14 @@ function Dashboard() {
                     }
                 })
                 .catch((error) => {
-                    console.log('error:- ', error)
                     if (error.response.data === 'No Data Found') {
                         setError('No Data Found')
                         setItemDataNull(true)
                     }
+            setError(error?.response?.data || 'Network Error!!!...')
                 })
         } catch (error) {
-            console.log(error)
-
+            setError(error?.response?.data || 'Network Error!!!...')
         }
     };
     const editPriceValue = () => {
@@ -547,7 +654,7 @@ function Dashboard() {
                 setEditPriceMode(false)
             }
         } catch (error) {
-            console.log(error)
+            setError(error?.response?.data || 'Network Error!!!...')
         }
     }
     const handleManualVariantsname = (data) => {
@@ -585,7 +692,6 @@ function Dashboard() {
             itemSubCategory: varinatsItemObject.itemSubCategory,
             variantsList: variantEditData
         };
-        console.log('Handle Update', variantEditData)
 
         try {
             const response = await axios.post(`${BACKEND_BASE_URL}menuItemrouter/updateItemData`, newData, {
@@ -601,7 +707,7 @@ function Dashboard() {
                 getAllUnit();
             }
         } catch (error) {
-            console.log(error)
+            setError(error?.response?.data || 'Network Error!!!...')
         }
         setEditItem(false)
         setVariantMode({
@@ -666,110 +772,111 @@ function Dashboard() {
             </div>
             <ToastContainer />
             <div className="maina_box">
-                <div className="sidebar overflow-y-auto blackCountLogoWrp shadow-2xl py-4 my-4 mr-4">
-                    {subCategories.map(subcategory => (
-                        <div
-                            key={subcategory.subCategoryId}
-                            className={`sidebar_menu my-2  cursor-pointer rounded-lg p-2 hover:bg-blue-600 text-start text-lg ${clickedSubCategory === subcategory.subCategoryId ? 'ClickedBlueBg' : ''}`}
-                            onClick={() => handleSubCategoryClick(subcategory.subCategoryId)}
-                        >
-                            {subcategory.subCategoryName}
-                        </div>
-                    ))}
-                </div>
-                <TableContainer className='mt-4 '>
-                    <div className="patti rounded-lg shadow-md p-2 mb-2 bg-white w-full">
-                        {!editPriceMode ? (
-                            <div className="mainANotherDiv gap-4 justify-between">
-                                <div className='flex gap-4'>
-                                    <Search className='border'>
-                                        <SearchIconWrapper>
-                                            <SearchIcon />
-                                        </SearchIconWrapper>
-                                        <StyledInputBase
-                                            placeholder="Search…"
-                                            inputProps={{ 'aria-label': 'search' }}
-                                        />
-                                    </Search>
-                                    <button className='addProductBtn' onClick={() => { setEditPricePopUp(true); setEditPriceType({ percentage: true }) }} >Edit Price</button>
-                                </div>
-                                <div className="flex gap-4">
-                                    <button className='addProductBtn' onClick={() => {
-                                        setCopyMenuPopUp(true);
-                                        const menuCateory = menuCategory.find(name => name.menuCategoryId === menuId)
-                                        setMenuName(menuCateory)
-                                        const updatedCopyMenuItems = menuCategory.filter(menu => menu.menuCategoryId !== menuId);
-                                        setCopyMenuItems(updatedCopyMenuItems)
-                                    }} >Copy Price From Menu</button>
-                                </div>
+                {subCategories.length > 0 && (
+                    <div className="sidebar overflow-y-auto blackCountLogoWrp shadow-2xl py-4 my-4 mr-4">
+                        {subCategories.map(subcategory => (
+                            <div
+                                key={subcategory.subCategoryId}
+                                className={`sidebar_menu my-2  cursor-pointer rounded-lg p-2 hover:bg-blue-600 text-start text-lg ${clickedSubCategory === subcategory.subCategoryId ? 'ClickedBlueBg' : ''}`}
+                                onClick={() => handleSubCategoryClick(subcategory.subCategoryId)}
+                            >
+                                {subcategory.subCategoryName}
                             </div>
-                        ) : (
-                            <div className='flex justify-end w-full'>
-                                <div>
-                                    <button onClick={handleEditPrice} className="bg-blue-500  text-white py-2 px-4 rounded-lg mr-2">Save</button>
-                                </div>
-                                <div>
-                                    <button onClick={() => setEditPriceMode(false)} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">Cancel</button>
-                                </div>
-                            </div>
-                        )}
+                        ))}
                     </div>
+                )}
+                <TableContainer className='mt-4 '>
+
                     <div className="mt-4">
                         {!editPriceMode && !itemDataNull && (
-                            <TableContainer sx={{ borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', paddingLeft: '12px', paddingRight: '12px', paddingTop: '12px' }} component={Paper}>
-
-                                <Table sx={{ minWidth: 650 }} aria-label="simple table">
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>No.</TableCell>
-                                            <TableCell>Name</TableCell>
-                                            <TableCell >Gujarati Name</TableCell>
-                                            <TableCell >Short Code</TableCell>
-                                            <TableCell >Short Name</TableCell>
-                                            <TableCell >Variantd Details</TableCell>
-                                            <TableCell >Description</TableCell>
-                                            <TableCell >Actions</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody className='bg-white'>
-                                        {itemData.map((item, index) => (
-                                            <TableRow key={index}>
-                                                <TableCell component="th" scope="row" className='table_row'>
-                                                    {index + 1}
-                                                </TableCell>
-                                                <TableCell component="th" scope="row" className='table_row'>
-                                                    {item.itemName}
-                                                </TableCell>
-                                                <TableCell component="th" scope="row" className='table_row'>
-                                                    {item.itemGujaratiName}
-                                                </TableCell>
-                                                <TableCell component="th" scope="row" className='table_row'>
-                                                    {item.itemCode}
-                                                </TableCell>
-                                                <TableCell component="th" scope="row" className='table_row'>
-                                                    {item.itemShortKey}
-                                                </TableCell>
-                                                <TableCell component="th" scope="row" className='table_row'>
-                                                    {item?.variantsList[0]?.price}
-                                                </TableCell>
-                                                <TableCell component="th" scope="row" className='table_row'>
-                                                    {item.itemDescription}
-                                                </TableCell>
-                                                <TableCell component="th" scope="row" className='table_row'>
-                                                    <div className="flex w-100">
-                                                        {menuId === editButtonMenu && (
-                                                            <div onClick={() => handleEditItem(item.itemId)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-blue-600 '><BorderColorIcon className='text-gray-600 table_icon2' /></div>
-                                                        )}
-                                                        <div onClick={() => handleItemDelete(item.itemId)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-red-600'><DeleteOutlineOutlinedIcon className='text-gray-600 table_icon2 ' /></div>
-                                                        <div onClick={() => handleManualVariantsname(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-green-600'><p className='text-gray-600 table_icon2 text-center font-bold text-base' >V</p></div>
-                                                    </div>
-                                                </TableCell>
+                            <div>
+                                <div className="patti rounded-lg shadow-md p-2 mb-2 bg-white w-full">
+                                    {!editPriceMode ? (
+                                        <div className="mainANotherDiv gap-4 justify-between">
+                                            <div className='flex gap-4'>
+                                                <Search className='border'>
+                                                    <SearchIconWrapper>
+                                                        <SearchIcon />
+                                                    </SearchIconWrapper>
+                                                    <StyledInputBase
+                                                        placeholder="Search…"
+                                                        inputProps={{ 'aria-label': 'search' }}
+                                                    />
+                                                </Search>
+                                                <button className='addProductBtn' onClick={() => { setEditPricePopUp(true); setEditPriceType({ percentage: true }) }} >Edit Price</button>
+                                            </div>
+                                            <div className="flex gap-4">
+                                                <button className='addProductBtn' onClick={() => {
+                                                    setCopyMenuPopUp(true);
+                                                    const menuCateory = menuCategory.find(name => name.menuCategoryId === menuId)
+                                                    setMenuName(menuCateory)
+                                                    const updatedCopyMenuItems = menuCategory.filter(menu => menu.menuCategoryId !== menuId);
+                                                    setCopyMenuItems(updatedCopyMenuItems)
+                                                }} >Copy Price From Menu</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className='flex justify-end w-full'>
+                                            <div>
+                                                <button onClick={handleEditPrice} className="bg-blue-500  text-white py-2 px-4 rounded-lg mr-2">Save</button>
+                                            </div>
+                                            <div>
+                                                <button onClick={() => setEditPriceMode(false)} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">Cancel</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <TableContainer sx={{ borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', paddingLeft: '12px', paddingRight: '12px', paddingTop: '12px' }} component={Paper}>
+                                    <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell className=''>No.</TableCell>
+                                                <TableCell>Name</TableCell>
+                                                <TableCell >Gujarati Name</TableCell>
+                                                <TableCell >Short Code</TableCell>
+                                                <TableCell >Short Name</TableCell>
+                                                <TableCell >Variant Details</TableCell>
+                                                <TableCell >Description</TableCell>
+                                                <TableCell align='right' >Actions</TableCell>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-
+                                        </TableHead>
+                                        <TableBody className='bg-white'>
+                                            {itemData.map((item, index) => (
+                                                <TableRow key={index}  >
+                                                    <TableCell component="th" scope="row" style={{ maxWidth: '15px', width: '15px' }}>
+                                                        {index + 1}
+                                                    </TableCell>
+                                                    <TableCell component="th" scope="row" className='table_row'>
+                                                        {item.itemName}
+                                                    </TableCell>
+                                                    <TableCell component="th" scope="row" className='table_row'>
+                                                        {item.itemGujaratiName}
+                                                    </TableCell>
+                                                    <TableCell component="th" scope="row" className='table_row'>
+                                                        {item.itemCode}
+                                                    </TableCell>
+                                                    <TableCell component="th" scope="row" className='table_row'>
+                                                        {item.itemShortKey}
+                                                    </TableCell>
+                                                    <TableCell component="th" scope="row" className='table_row'>
+                                                        {item?.variantsList[0]?.price}
+                                                    </TableCell>
+                                                    <TableCell component="th" scope="row" className='table_row'>
+                                                        {item.itemDescription}
+                                                    </TableCell>
+                                                    <TableCell component="th" scope="row" className='table_row'>
+                                                        <div className="flex w-100">
+                                                            <div onClick={() => handleEditItem(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-blue-600 '><BorderColorIcon className='text-gray-600 table_icon2' /></div>
+                                                            <div onClick={() => handleItemDelete(item.itemId)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-red-600'><DeleteOutlineOutlinedIcon className='text-gray-600 table_icon2 ' /></div>
+                                                            <div onClick={() => handleManualVariantsname(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-green-600'><p className='text-gray-600 table_icon2 text-center font-bold text-base' >V</p></div>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </div>
                         )
                         }
                         {!itemDataNull && editPriceMode && (
@@ -808,6 +915,7 @@ function Dashboard() {
                                                                     value={variant.price}
                                                                     onChange={(event) => handleVariantPriceChange(event, itemIndex, variantIndex)}
                                                                     className='w-full'
+                                                                    autoComplete="off"
                                                                 />
                                                             </FormControl>
                                                         ))}
@@ -845,12 +953,29 @@ function Dashboard() {
                 aria-describedby="modal-modal-description"
             >
                 <Box sx={style} className='addProdutModal'>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl ">
                         Add Items
                     </div>
                     <hr className='my-6' />
                     <div className="grid grid-cols-12 gap-4">
-                        <div className="col-span-2 ">
+                        <div className="col-span-2">
+                            <TextField
+                                id="outlined-basic"
+                                className={`w-full ${allFormValidation.itemCode ? 'border-red-500' : ''}`}
+                                error={allFormValidation.itemCode}
+                                helperText={allFormValidation.itemCode ? 'Item Code is required' : ''}
+                                label="Code"
+                                variant="outlined"
+                                value={fullData.itemCode}
+                                onChange={(e) => {
+                                    setFullData({ ...fullData, itemCode: e.target.value })
+                                    setAllFormValidation({ ...allFormValidation, itemCode: false })
+                                }}
+                                autoComplete="off"
+                                inputRef={autoFocus}
+                            />
+                        </div>
+                        <div className="col-span-3 ">
                             <TextField
                                 id="outlined-basic"
                                 label="Item Name"
@@ -861,43 +986,41 @@ function Dashboard() {
                                 helperText={allFormValidation.itemName ? 'Item Name is required' : ''}
                                 onChange={(e) => {
                                     setFullData({ ...fullData, itemName: e.target.value })
+                                    setAllFormValidation({ ...allFormValidation, itemName: false })
                                 }}
+                                autoComplete="off"
                             />
                         </div>
-                        <div className="col-span-2">
-                            <TextField
+                        <div className="col-span-3">
+                            <ReactTransliterate
                                 id="outlined-basic"
-                                className={`w-full ${allFormValidation.itemGujaratiName ? 'border-red-500' : ''}`}
+                                value={fullData.itemGujaratiName}
+                                onChangeText={(e) => {
+                                    setFullData({ ...fullData, itemGujaratiName: e })
+                                    setAllFormValidation({ ...allFormValidation, itemGujaratiName: false })
+                                }}
+                                variant="outlined"
+                                className={`w-full border p-4 rounded-md border-gray-300 ${allFormValidation.itemGujaratiName ? 'border-red-500' : ''}`}
+                                placeholder='ગુજરાતી નામ'
                                 error={allFormValidation.itemGujaratiName}
                                 helperText={allFormValidation.itemGujaratiName ? 'Gujarati Name is required' : ''}
                                 label="Item Gujarati Name"
-                                variant="outlined"
-                                value={fullData.itemGujaratiName}
-                                onChange={(e) => setFullData({ ...fullData, itemGujaratiName: e.target.value })}
+                                lang="gu"
+                                autoComplete="off"
                             />
                         </div>
-                        <div className="col-span-2">
-                            <TextField
-                                id="outlined-basic"
-                                className={`w-full ${allFormValidation.itemCode ? 'border-red-500' : ''}`}
-                                error={allFormValidation.itemCode}
-                                helperText={allFormValidation.itemCode ? 'Item Code is required' : ''}
-                                label="Item Code"
-                                variant="outlined"
-                                value={itemData.itemCode}
-                                onChange={(e) => setFullData({ ...fullData, itemCode: e.target.value })}
-                            />
-                        </div>
+
                         <div className="col-span-2">
                             <TextField
                                 id="outlined-basic"
                                 className={`w-full ${allFormValidation.itemShortKey ? 'border-red-500' : ''}`}
                                 error={allFormValidation.itemShortKey}
                                 helperText={allFormValidation.itemShortKey ? 'Item Short is required' : ''}
-                                label="Item Short Code"
+                                label="Short Code"
                                 variant="outlined"
                                 value={fullData.itemShortKey}
                                 onChange={(e) => setFullData({ ...fullData, itemShortKey: e.target.value })}
+                                autoComplete="off"
                             />
                         </div>
                         <div className="col-span-2">
@@ -907,56 +1030,62 @@ function Dashboard() {
                                 error={allFormValidation.itemName}
                                 helperText={allFormValidation.itemName ? 'Item Price is required' : ''}
                                 label="Price"
-                                // value={fullData?.variantsList[0]?.price}
+                                value={price || ''}
                                 variant="outlined"
-                                onChange={(e) => addDefaultVariant(e.target.value)}
+                                onChange={(e) => {
+                                    setPrice(e.target.value)
+                                    addDefaultVariant(e.target.value)
+                                    setAllFormValidation({ ...allFormValidation, itemName: false })
+                                }}
+                                autoComplete="off"
                             />
                         </div>
-                        <div className="col-span-2">
+                        <div className="col-span-3">
                             <FormControl fullWidth>
                                 <InputLabel id="demo-simple-select-label">Sub Category</InputLabel>
                                 <Select
                                     labelId="demo-simple-select-label"
                                     id="demo-simple-select"
                                     label="Sub Category"
-                                    className={`w-full ${allFormValidation.itemSubCategory ? 'border-red-500' : ''}`}
+                                    value={fullData.itemSubCategory}
+                                    className={`w-full ${allFormValidation.itemSubCategory ? 'border-red-500 rela ' : ''}`}
                                     error={allFormValidation.itemSubCategory}
+                                    autoComplete="off"
                                     onChange={(e) => {
-                                        const selectedSubCategory = subCategories.find(category => category.subCategoryName === e.target.value);
-                                        console.log(selectedSubCategory)
-                                        if (selectedSubCategory) {
-                                            setFullData(prevItemData => ({
-                                                ...prevItemData,
-                                                itemSubCategory: selectedSubCategory.subCategoryId
-                                            }));
-                                        }
+                                        setFullData(prevItemData => ({
+                                            ...prevItemData,
+                                            itemSubCategory: e.target.value
+                                        }));
+                                        setAllFormValidation({ ...allFormValidation, itemSubCategory: false })
                                     }}
                                 >
                                     {subCategories.map((category, index) => (
-                                        <MenuItem key={index} value={category.subCategoryName}>{category.subCategoryName}</MenuItem>
+                                        <MenuItem key={index} value={category.subCategoryId}>{category.subCategoryName}</MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>
                         </div>
-                        <div className="col-span-4">
+                        <div className="col-span-9">
                             <TextField
                                 id="outlined-basic"
                                 className={`w-full ${allFormValidation.itemDescription ? 'border-red-500' : ''}`}
-                                error={allFormValidation.itemDescription}
-                                helperText={allFormValidation.itemDescription ? 'Item Description is required' : ''}
                                 label="Item Description"
                                 variant="outlined"
                                 value={fullData.itemDescription}
-                                onChange={(e) => setFullData({ ...fullData, itemDescription: e.target.value })}
+                                onChange={(e) => {
+                                    setFullData({ ...fullData, itemDescription: e.target.value })
+                                    setAllFormValidation({ ...allFormValidation, itemDescription: false })
+                                }}
+                                autoComplete="off"
                             />
                         </div>
                     </div>
-                    <div className="text-2xl my-6 font-bold">
+                    <div className="text-2xl my-6">
                         Add Unit
                     </div>
                     <hr className='my-6' />
-                    <div className="flex w-full gap-6">
-                        <div className='flex gap-6 w-3/6'>
+                    <div className="flex w-full gap-6 ">
+                        <div className='flex gap-6 w-3/6 items-center'>
                             <FormControl fullWidth>
                                 <InputLabel id="demo-simple-select-label">Unit</InputLabel>
                                 <Select
@@ -964,7 +1093,13 @@ function Dashboard() {
                                     id="demo-simple-select"
                                     label="Age"
                                     value={unit.unit}
-                                    onChange={(e) => { setUnit({ ...unit, unit: e.target.value }) }}
+                                    error={allFormValidation.unit ? true : false}
+                                    helperText={allFormValidation.unit ? 'Unit is required' : ''}
+
+                                    onChange={(e) => {
+                                        setUnit({ ...unit, unit: e.target.value })
+                                        setAllFormValidation({ ...allFormValidation, unit: false })
+                                    }}
                                 >
                                     {getAllUnit && getAllUnit.map((unit, index) => (
                                         <MenuItem key={index} value={unit}>{unit}</MenuItem>
@@ -977,16 +1112,23 @@ function Dashboard() {
                                 label="Unit Price"
                                 value={unit.price}
                                 variant="outlined"
-                                onChange={(e) => { setUnit({ ...unit, price: e.target.value }) }}
+                                error={allFormValidation.price ? true : false}
+                                helperText={allFormValidation.price ? 'Price is required' : ''}
+                                onChange={(e) => {
+                                    setUnit({ ...unit, price: e.target.value })
+                                    setAllFormValidation({ ...allFormValidation, price: false })
+                                }}
+                                autoComplete="off"
                             />
-
-                            <button onClick={addVariantFields} className='addProductBtn h-full w-full mt-2'>Add </button>
+                            <div className="w-full">
+                                <button onClick={addVariantFields} className="addCategorySaveBtn ">Add</button>
+                            </div>
+                            {/* <button onClick={addVariantFields} className='addProductBtn h-full w-full mt-2'>Add </button> */}
                         </div>
                         <div>
                             {variantFields.map((period, index) => (
-                                <div key={index} className="flex w-full mt-2 gap-3 items-center">
+                                <div key={index} className="flex w-full mt-2  gap-3 items-center">
                                     <div className='w-1/2'>
-                                        {console.log(period)}
                                         <TextField
                                             id="outlined-basic"
                                             className='w-full'
@@ -994,6 +1136,7 @@ function Dashboard() {
                                             variant="outlined"
                                             disabled
                                             value={period.variantName}
+                                            autoComplete="off"
                                         />
                                     </div>
                                     <div className='w-1/2'>
@@ -1002,7 +1145,9 @@ function Dashboard() {
                                             className='w-full'
                                             label="Unit Price"
                                             variant="outlined"
+                                            disabled
                                             value={period.variantPrice}
+                                            autoComplete="off"
                                         />
                                     </div>
                                     <div className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 h-11 text-center w-11 hover:bg-red-600 hover:font-white' onClick={() => handleDelete(index)}>
@@ -1012,9 +1157,13 @@ function Dashboard() {
                             ))}
                         </div>
                     </div>
-                    <div className="flex gap-6 mt-6 w-full">
-                        <button onClick={handleSUbmitForm} className="bg-blue-500  text-white py-2 px-4 rounded-lg mr-2">Save</button>
-                        <button onClick={handleClose} className="bg-gray-300 text-gray-800 py-2 px-4  rounded-lg">Cancel</button>
+                    <div className="flex gap-6 mt-6 w-full justify-end px-4">
+                        <div className="w-1/5">
+                            <button onClick={handleSUbmitForm} className="addCategorySaveBtn ml-4">Save</button>
+                        </div>
+                        <div className="w-1/5">
+                            <button onClick={handleClose} className="addCategoryCancleBtn ml-4 bg-gray-700">Cancel</button>
+                        </div>
                     </div>
                 </Box>
             </Modal>
@@ -1024,7 +1173,7 @@ function Dashboard() {
                 aria-labelledby="modal-modal-title"
                 aria-describedby="modal-modal-description"
             >
-                <Box sx={style}>
+                <Box sx={style} className='addProdutModal'>
                     <div className="text-2xl font-bold">
                         Edit Product
                     </div>
@@ -1036,10 +1185,11 @@ function Dashboard() {
                                 className='w-full'
                                 label="Item Name"
                                 variant="outlined"
-                                value={editData?.itemName}
+                                value={varinatsItemObject?.itemName}
                                 onChange={(e) => {
                                     setFullData({ ...fullData, itemName: e.target.value })
                                 }}
+                                autoComplete="off"
                             />
                         </div>
                         <div className="col-span-2">
@@ -1050,6 +1200,7 @@ function Dashboard() {
                                 variant="outlined"
                                 value={editData?.itemGujaratiName}
                                 onChange={(e) => setFullData({ ...fullData, itemGujaratiName: e.target.value })}
+                                autoComplete="off"
                             />
                         </div>
                         <div className="col-span-2">
@@ -1060,6 +1211,7 @@ function Dashboard() {
                                 variant="outlined"
                                 value={editData?.itemCode}
                                 onChange={(e) => setFullData({ ...fullData, itemCode: e.target.value })}
+                                autoComplete="off"
                             />
                         </div>
                         <div className="col-span-2">
@@ -1070,6 +1222,7 @@ function Dashboard() {
                                 variant="outlined"
                                 value={editData?.itemShortKey}
                                 onChange={(e) => setFullData({ ...fullData, itemShortKey: e.target.value })}
+                                autoComplete="off"
                             />
                         </div>
                         <div className="col-span-2">
@@ -1080,6 +1233,7 @@ function Dashboard() {
                                 variant="outlined"
                                 value={editData?.variantsList[0]?.price}
                                 onChange={(e) => addDefaultVariant(e.target.value)}
+                                autoComplete="off"
                             />
                         </div>
                         <div className="col-span-2">
@@ -1092,7 +1246,6 @@ function Dashboard() {
                                     value={subCategoryName}
                                     onChange={(e) => {
                                         const selectedSubCategory = subCategories.find(category => category.subCategoryName === e.target.value);
-                                        console.log(selectedSubCategory)
                                         if (selectedSubCategory) {
                                             setFullData(prevItemData => ({
                                                 ...prevItemData,
@@ -1100,6 +1253,7 @@ function Dashboard() {
                                             }));
                                         }
                                     }}
+                                    autoComplete="off"
                                 >
                                     {subCategories.map((category, index) => (
                                         <MenuItem key={index} value={category.subCategoryName}>{category.subCategoryName}</MenuItem>
@@ -1115,6 +1269,7 @@ function Dashboard() {
                                 variant="outlined"
                                 value={editData?.itemDescription}
                                 onChange={(e) => setFullData({ ...fullData, itemDescription: e.target.value })}
+                                autoComplete="off"
                             />
                         </div>
                     </div>
@@ -1133,6 +1288,7 @@ function Dashboard() {
                                             id="demo-simple-select"
                                             label="Variants Name"
                                             className='w-full'
+                                            autoComplete="off"
                                             onChange={(e) => {
                                                 setSecondVariantData({ ...secondVariantData, unit: e.target.value });
                                             }}
@@ -1149,6 +1305,7 @@ function Dashboard() {
                                         label="Price"
                                         variant="outlined"
                                         onChange={(e) => { setSecondVariantData({ ...secondVariantData, price: e.target.value }) }}
+                                        autoComplete="off"
                                     />
                                 </div>
                                 <div className='w-full'>
@@ -1168,6 +1325,7 @@ function Dashboard() {
                                             className='w-full'
                                             disabled
                                             value={variant.unit}
+                                            autoComplete="off"
                                         >
                                             {getAllUnit && getAllUnit.map((unit, index) => (
                                                 <MenuItem key={index} value={unit}>{unit}</MenuItem>
@@ -1182,6 +1340,7 @@ function Dashboard() {
                                             variant="outlined"
                                             disabled
                                             value={variant.price}
+                                            autoComplete="off"
                                         />
                                     </div>
                                     <div className="">
@@ -1201,9 +1360,13 @@ function Dashboard() {
                             ))}
                         </div>
                     </div>
-                    <div className="flex gap-6 w-full">
-                        <button onClick={handleUpdateVariantsData} className="bg-blue-500  text-white py-2 px-4 rounded-lg mr-2">Save</button>
-                        <button onClick={handleClose} className="bg-gray-300 text-gray-800 py-2 px-4  rounded-lg">Cancel</button>
+                    <div className="flex gap-6 mt-6 w-full justify-end">
+                        <div className="w-1/5">
+                            <button onClick={handleUpdateVariantsData} className="addCategorySaveBtn ml-4">Save</button>
+                        </div>
+                        <div className="w-1/5">
+                            <button onClick={handleClose} className="addCategoryCancleBtn ml-4 bg-gray-700">Cancel</button>
+                        </div>
                     </div>
                 </Box>
             </Modal>
@@ -1229,12 +1392,14 @@ function Dashboard() {
                                     value="Percentage"
                                     control={<Radio />}
                                     label="Percentage"
+                                    autoComplete="off"
                                 />
                                 <FormControlLabel
                                     onClick={() => setEditPriceType({ fixed: true })}
                                     value="Fixed"
                                     control={<Radio />}
                                     label="Fixed"
+                                    autoComplete="off"
                                 />
                             </div>
                         </RadioGroup>
@@ -1246,6 +1411,7 @@ function Dashboard() {
                                     variant='outlined'
                                     id="standard-adornment-weight"
                                     aria-describedby="standard-weight-helper-text"
+                                    autoComplete="off"
                                     InputProps={{
                                         endAdornment: <InputAdornment position="end">%</InputAdornment>,
                                         'aria-label': 'weight',
@@ -1264,6 +1430,7 @@ function Dashboard() {
                                 id="outlined-basic"
                                 label="Fixed"
                                 variant="outlined"
+                                autoComplete="off"
                                 onChange={(e) => {
                                     setEditPrice({ fixed: e.target.value })
                                 }}
@@ -1274,7 +1441,6 @@ function Dashboard() {
                         <div className="flex w-full">
                             <button onClick={editPriceValue} className="bg-blue-500 w-2/4 text-white py-2 px-4 rounded-lg mr-2">Save</button>
                             <button onClick={handleClose} className="bg-gray-300 text-gray-800 py-2 px-4 w-2/4 rounded-lg">Cancel</button>
-
                         </div>
                     </div>
                 </Box>
@@ -1300,6 +1466,7 @@ function Dashboard() {
                                                 id="demo-simple-select"
                                                 label="Variants Name"
                                                 className='w-full'
+                                                autoComplete="off"
                                                 disabled={variantMode.isView ? true : false}
                                                 onChange={(e) => {
                                                     setSecondVariantData({ ...secondVariantData, unit: e.target.value });
@@ -1316,6 +1483,7 @@ function Dashboard() {
                                             id="outlined-basic"
                                             label="Price"
                                             variant="outlined"
+                                            autoComplete="off"
                                             disabled={variantMode.isView ? true : false}
                                             onChange={(e) => { setSecondVariantData({ ...secondVariantData, price: e.target.value }) }}
                                         />
@@ -1336,6 +1504,7 @@ function Dashboard() {
                                             id="demo-simple-select"
                                             label="Variants Name"
                                             className='w-full'
+                                            autoComplete="off"
                                             disabled
                                             value={variant.unit}
                                         >
@@ -1352,6 +1521,7 @@ function Dashboard() {
                                             variant="outlined"
                                             disabled={variantMode.isEdit ? false : true}
                                             value={variant.price}
+                                            autoComplete="off"
                                             onChange={(e) => handlePriceChange(e, index)}
                                         />
                                     </div>
@@ -1363,6 +1533,7 @@ function Dashboard() {
                                                     checked={variant.status ? true : false}
                                                     disabled={variantMode.isView}
                                                     onChange={() => handleSwitchToggle(index)}
+                                                    autoComplete="off"
                                                 />
                                             </div>
                                             {variantMode.isEdit && (
@@ -1420,6 +1591,7 @@ function Dashboard() {
                                 label="Outlined"
                                 variant="outlined"
                                 disabled
+                                autoComplete="off"
                                 value={menuName.menuCategoryName}
                             />
                         </div>
