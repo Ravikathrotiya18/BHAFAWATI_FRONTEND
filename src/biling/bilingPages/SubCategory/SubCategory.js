@@ -96,6 +96,7 @@ function SubCategory() {
     const [temp, setTemp] = useState('');
     const [timeFeilds, setTimeFeilds] = useState(false)
     const [variantFields, setVariantFields] = React.useState([]);
+    const [timeSave, setTimeSave] = useState('Edit');
     const [categoryId, setCategoryId] = useState('');
     const [timeEdit, setTimeEdit] = useState(false);
     const [timeEditName, setTimeEditName] = useState('');
@@ -126,6 +127,7 @@ function SubCategory() {
             setTimeFeilds(true);
             setVariantFields([...variantFields, { from: time.from, to: time.to, index: variantFields.length }]);
             setTime({ from: null, to: null });
+            setTimeSave('Save')
         } else {
             console.log("Please select both 'from' and 'to' times.");
         }
@@ -152,8 +154,8 @@ function SubCategory() {
             setCategories(response.data);
         } catch (error) {
             if (error) {
-                const errorMsg = error.response.data;
-                setError(errorMsg)
+                const errorMsg = error?.response?.data;
+                setError(errorMsg || 'Network Error !!!...')
             }
         }
     }
@@ -176,7 +178,7 @@ function SubCategory() {
                     }
                 })
         } catch (error) {
-            setError(error.response.data)
+            setError(error?.response?.data || 'Network Error !!!...')
         }
     }
     const handleClose = () => {
@@ -273,7 +275,7 @@ function SubCategory() {
                 setError('SubCategory is Already In Use');
                 autoFocus.current && autoFocus.current.focus();
             }
-            setError(error.response.data)
+            setError(error?.response?.data || 'Network Error !!!...')
         }
     }
     const handleUpdateData = (categoryData) => {
@@ -331,8 +333,8 @@ function SubCategory() {
             }
         } catch (error) {
             if (error) {
-                const errorMsg = error.response.data;
-                setError(errorMsg)
+                const errorMsg = error?.response?.data;
+                setError(errorMsg || 'Network Error !!!...')
             }
         }
     };
@@ -364,8 +366,8 @@ function SubCategory() {
                 }
             } catch (error) {
                 if (error) {
-                    const errorMsg = error.response.data;
-                    setError(errorMsg)
+                    const errorMsg = error?.response?.data;
+                    setError(errorMsg || 'Network Error !!!...')
                 }
             }
         }
@@ -385,8 +387,7 @@ function SubCategory() {
         }
     }
 
-    const timeSave = 'save'
-    const timeEdits = 'Edit'
+ 
 
 
     const handleTimeSave = async () => {
@@ -413,7 +414,7 @@ function SubCategory() {
             );
             console.log(response.data);
         } catch (error) {
-            setError(error.response.data)
+            setError(error?.response?.data || 'Network Error !!!...')
         }
     };
     const handleUpdateTime = async () => {
@@ -438,7 +439,7 @@ function SubCategory() {
             );
             console.log(response.data);
         } catch (error) {
-            setError(error.response.data)
+            setError(error?.response?.data || 'Network Error !!!...')
         }
     };
     useEffect(() => {
@@ -530,14 +531,14 @@ function SubCategory() {
                     </TableContainer>
                 ) : (
                     <div className="w-full flex justify-center">
-                            <div className='text-center'>
-                                <RestaurantMenuIcon className='restaurantMenu' />
-                                <br />
-                                <div className="text-2xl text-gray">
-                                    No Data Found
-                                </div>
+                        <div className='text-center'>
+                            <RestaurantMenuIcon className='restaurantMenu' />
+                            <br />
+                            <div className="text-2xl text-gray">
+                                No Data Found
                             </div>
                         </div>
+                    </div>
                 )
             }
             <Modal
@@ -569,7 +570,7 @@ function SubCategory() {
                                     helperText={feildError.name ? 'Category name cannot be empty' : ''}
                                     inputRef={autoFocus}
                                     autoComplete='off'
-                                    
+
                                 />
                                 <div className='w-full'>
                                     <FormControl fullWidth >
@@ -586,7 +587,7 @@ function SubCategory() {
                                             helperText={feildError.mainCategory ? 'Main Category Have to be selected' : ''}
                                             value={mainCategoryName}
                                             className='w-full'
-                                            
+
                                         >
                                             {categories.map((category, index) => (
                                                 <MenuItem value={category.categoryName} onClick={() => setMainCategoryId(category)} key={index}>{category.categoryName}</MenuItem>
@@ -606,7 +607,7 @@ function SubCategory() {
                                     className="w-full col-span-3 mb-6"
                                     error={feildError.categoryRank ? true : false}
                                     autoComplete='off'
-                                    
+
                                     helperText={feildError.categoryRank ? 'Category Rank cannot be empty' : ''}
                                 />
                                 <div className="w-3/4">
@@ -647,7 +648,7 @@ function SubCategory() {
                                     variant="outlined"
                                     value={categoryUpdateName}
                                     className="w-full  col-span-3 mb-6"
-                                    
+
                                 />
                                 <div className='w-full'>
                                     <FormControl fullWidth >
@@ -664,7 +665,7 @@ function SubCategory() {
                                             helperText={feildError.mainCategory ? 'Main Category Have to be selected' : ''}
                                             value={categoryUpdateMenuName}
                                             className='w-full'
-                                            
+
                                         >
                                             {categories.map((category, index) => (
                                                 <MenuItem value={category.categoryName} onClick={() => setMainCategoryId(category)} key={index}>{category.categoryName}</MenuItem>
@@ -684,7 +685,7 @@ function SubCategory() {
                                     error={feildError.categoryRank ? true : false}
                                     helperText={feildError.categoryRank ? 'Category Rank cannot be empty' : ''}
                                     className="w-full col-span-3 mb-6"
-                                    
+
                                 />
                                 <div className="w-3/4">
                                     <button onClick={handleUpdateUnit} className="addCategorySaveBtn w-full ">Save</button>
@@ -704,14 +705,13 @@ function SubCategory() {
                 aria-describedby="spring-modal-description"
                 closeAfterTransition
             >
-                <Fade in={openTime}>
-                    <Box sx={{ ...style, width: '70%' }}>
+                    <Box sx={{ ...style, width: '70%' }} className={`${addTimeFeilds.length > 0 ? 'openTimePopUpAnother' : 'openTimePopUp'}`}>
                         <div className="bg-white w-full">
-                            <div className="w-full mb-4">Set Time for {timeEditName}</div>
+                            <div className="w-full text-xl mb-4">Set Time for {timeEditName}</div>
                             <hr className='mb-4' />
                             <div className="mb-4 grid grid-cols-12 gap-8 align-middle">
                                 {timeEdit && (
-                                    <div className='col-span-6 flex gap-6'>
+                                    <div className={`${addTimeFeilds.length > 0 ? 'col-span-6' : 'col-span-12'}  flex gap-6`}>
                                         <div className="col-span-2 w-full">
                                             <LocalizationProvider className='w-full' dateAdapter={AdapterDayjs}>
                                                 <DemoContainer
@@ -752,7 +752,7 @@ function SubCategory() {
                                     </div>
                                 )}
                                 {addTimeFeilds && (
-                                    <div className="col-span-6">
+                                    <div className="col-span-12">
                                         {variantFields.slice(0, 3).map((period, index) => (
                                             <div key={index} className="flex gap-3">
                                                 {console.log(new Date(dayjs(period.startTime)))}
@@ -797,15 +797,22 @@ function SubCategory() {
 
                                 )}
                             </div>
-                            <div className="my-2 mt-4">
+                            {/* <div className="my-2 mt-4">
                                 <button onClick={() => { handleTimeEditing() }} className="bg-green-500 text-white py-2 px-4 rounded-lg mr-2">
                                     {timeEdit ? timeSave : timeEdits}
                                 </button>
                                 <button onClick={handleClose} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">Cancel</button>
+                            </div> */}
+                            <div className="flex gap-6 ">
+                                <div className="w-full">
+                                    <button onClick={handleTimeEditing} className="addCategorySaveBtn w-full ">{timeSave}</button>
+                                </div>
+                                <div className="w-full">
+                                    <button onClick={handleClose} className="addCategoryCancleBtn w-full bg-gray-700">Cancel</button>
+                                </div>
                             </div>
                         </div>
                     </Box>
-                </Fade>
             </Modal>
             <ToastContainer />
         </div>

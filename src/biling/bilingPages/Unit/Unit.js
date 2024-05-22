@@ -91,7 +91,7 @@ function Unit() {
             });
             setGetAllUnit(response.data)
         } catch (error) {
-            setError(error.response.data)
+            setError(error?.response?.data || 'Network Error !!!...')
         }
     }
 
@@ -202,11 +202,11 @@ function Unit() {
                 autFocus.current && autFocus.current.focus();
             }
         } catch (error) {
-            console.log(error.response.data);
             if (error.response.data === "Unit is Already In Use") {
                 setError('Unit is Already In Use')
                 autFocus.current && autFocus.current.focus();
             }
+            setError(error?.response?.data || 'Network Error !!!...')
         }
     }
     const handleUpdateUnit = async (index) => {
@@ -234,10 +234,10 @@ function Unit() {
                 handleClose();
             }
         } catch (error) {
-            console.log(error)
             if (error.response.data === 'Unit is Same No Change') {
                 setError('Unit is Same No Change')
             }
+            setError(error?.response?.data || 'Network Error !!!...')
         }
     }
 

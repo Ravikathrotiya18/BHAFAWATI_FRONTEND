@@ -31,7 +31,7 @@ import InputBase from '@mui/material/InputBase';
 import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
-import { FilledInput, FormControlLabel, FormHelperText, FormLabel, Input, InputAdornment, Paper, Radio, RadioGroup, Switch } from '@mui/material';
+import { Divider, FilledInput, FormControlLabel, FormHelperText, FormLabel, Input, InputAdornment, Paper, Radio, RadioGroup, Switch } from '@mui/material';
 import { ReactTransliterate } from 'react-transliterate';
 
 const Fade = React.forwardRef(function Fade(props, ref) {
@@ -139,6 +139,8 @@ function Dashboard() {
     const handleClose = () => {
         setOpen(false);
         setEditItem(false)
+        setEditData(null)
+        setDisabled(true)
         setEditPricePopUp(false)
         setEditPriceType({
             percentage: false,
@@ -172,6 +174,7 @@ function Dashboard() {
                 price: false
             }
         })
+        setUnit({ unit: '', price: '' });
         setVariantFields([]);
         setPrice(null)
     }
@@ -208,6 +211,7 @@ function Dashboard() {
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState(false);
     const [toggle, setToggle] = useState(false)
+    const [disabled, setDisabled] = useState(true)
     const [success, setSuccess] = React.useState(false);
     const [editPricePopUp, setEditPricePopUp] = useState(false)
 
@@ -266,9 +270,10 @@ function Dashboard() {
     const [menuName, setMenuName] = useState('')
     const [copyMenuPopUp, setCopyMenuPopUp] = useState(false)
     const [copyMenuItems, setCopyMenuItems] = useState([])
-    const [price, setPrice] = useState();
+    const [price, setPrice] = useState(null);
     const [copyMenuCheckBox, setCopyMenuCheckBox] = useState(false)
-    const [updatedVarintsName, setUpdatedVariantsName] = useState();
+    const [updatedVarintsName, setUpdatedVariantsName] = useState([]);
+    const addingUnitName = useRef(null)
     const [finalSelected, setFinalSelected] = useState();
     const autoFocus = useRef(null)
     if (loading) {
@@ -314,6 +319,7 @@ function Dashboard() {
         });
         setError(false);
     }
+
     const handleSUbmitForm = async () => {
         try {
             let formValidation;
@@ -331,10 +337,10 @@ function Dashboard() {
                 formValidation = {
                     itemName: editData.itemName.trim().length === 0,
                     itemGujaratiName: editData.itemGujaratiName.trim().length === 0,
-                    itemCode: editData.itemCode.trim().length === 0,
+                    itemCode: editData.itemCode === null,
                     itemShortKey: editData.itemShortKey.trim().length === 0,
                     itemSubCategory: !editData.itemSubCategory,
-                    variantsList: editData.variantsList.length === 0 || editData.variantsList.some(variant => variant.unit.trim().length === 0 || variant.price.trim().length === 0)
+                    variantsList: editData.variantsList.length === 0 || editData.variantsList.some(variant => variant.unit.trim().length === 0 || variant.price === null)
                 };
             }
 
@@ -366,7 +372,7 @@ function Dashboard() {
                     itemGujaratiName: editData.itemGujaratiName,
                     itemShortKey: editData.itemShortKey,
                     itemSubCategory: editData.itemSubCategory,
-                    variantsList: editData.variantsList
+                    variantsList: updatedVarintsName
                 };
                 response = await axios.post(
                     `${BACKEND_BASE_URL}menuItemrouter/updateItemData`,
@@ -378,9 +384,8 @@ function Dashboard() {
                     }
                 );
             }
-
             if (response.data === 'Item Added Successfully' || response.data === 'Item Updated Successfully') {
-                setSuccess(true);
+                setSuccess(response.data);
                 setOpen(true);
                 setFullData({
                     itemName: '',
@@ -391,7 +396,6 @@ function Dashboard() {
                     itemDescription: '',
                     variantsList: []
                 });
-                setPrice(null);
                 autoFocus.current && autoFocus.current.focus();
                 setAllFormValidation({
                     itemName: false,
@@ -411,8 +415,15 @@ function Dashboard() {
                 handleSubCategoryClick(finalSelected);
                 getAllUnits();
                 getAllItems(menuId);
+                if (editData) {
+                    handleClose();
+                }
+                if (!editData) {
+                    setPrice(null)
+                }
             }
         } catch (error) {
+            console.log(error)
             setError(error?.response?.data || 'Network Error!!!...');
         }
     };
@@ -464,7 +475,9 @@ function Dashboard() {
                     }
                 })
                 setSuccess(response.data)
+                getAllUnits();
                 getAllCategory();
+                handleSubCategoryClick(finalSelected);
                 getAllUnits();
                 getAllItems(menuId);
             }
@@ -473,7 +486,13 @@ function Dashboard() {
             }
         }
     }
-    const handleOpen = () => setOpen(true);
+    const handleOpen = () => { setOpen(true); setDisabled(false) };
+    const filteredDataOfvariants = () => {
+        const data = variantFields.map(variant => variant.unit);
+        const filteredData = getAllUnit.filter(unit => !data.includes(unit));
+        setGetAllUnit(filteredData);
+    };
+
     const addVariantFields = () => {
         const formValidation = {
             unit: unit.unit.trim().length === 0,
@@ -486,13 +505,30 @@ function Dashboard() {
             setError('Please Fill All Fields');
             return;
         }
+
+        if (editData) {
+            const newVariant = { unit: unit.unit, price: unit.price, index: variantFields.length };
+            setVariantFields([...variantFields, newVariant]);
+            setEditData(prevState => ({
+                ...prevState,
+                variantsList: [...prevState.variantsList, { unit: unit.unit, price: unit.price, status: true }]
+            }));
+            setGetAllUnit(prevUnits => prevUnits.filter(u => u !== unit.unit));
+        } else {
+            const newVariant = { unit: unit.unit, price: unit.price, index: variantFields.length };
+
+            setVariantFields([...variantFields, newVariant]);
+            setFullData(prevState => ({
+                ...prevState,
+                variantsList: [...prevState.variantsList, { unit: unit.unit, price: unit.price, status: true }]
+            }));
+            setGetAllUnit(prevUnits => prevUnits.filter(u => u !== unit.unit));
+        }
+        setUnit({ unit: '', price: '' });
+
+
         setAddVariant(true);
-        setVariantFields([...variantFields, { variantName: unit.unit, variantPrice: unit.price, index: variantFields.length }]);
-        setFullData(prevState => ({
-            ...prevState,
-            variantsList: [...prevState.variantsList, { unit: unit.unit, price: unit.price, status: true }]
-        }));
-        setUnit({ unit: '', price: '' })
+        addingUnitName.current && addingUnitName.current.focus();
     };
 
     const addDefaultVariant = (defaultPrice) => {
@@ -520,6 +556,9 @@ function Dashboard() {
                     index: variantFields.length
                 });
             }
+            const data = variantFields.map(variant => variant.unit);
+            const filteredData = getAllUnit.filter(unit => !data.includes(unit));
+            setGetAllUnit(filteredData)
         }
 
         setVariantFields(updatedVariantFields);
@@ -541,6 +580,12 @@ function Dashboard() {
     const handleDelete = (index) => {
         const updatedFields = variantFields.filter((_, i) => i !== index);
         setVariantFields(updatedFields);
+        const unitToDelete = variantFields[index].variantName;
+        setVariantFields(variantFields.filter((_, i) => i !== index));
+        setGetAllUnit([...getAllUnit, unitToDelete]);
+        if (editData) {
+            setUpdatedVariantsName(updatedFields)
+        }
     };
     const getSubCategory = async () => {
         try {
@@ -564,12 +609,14 @@ function Dashboard() {
     };
 
     const handleEditItem = (id) => {
+        setOpen(true)
         setEditData(id);
         setVariantsItemObject(id)
         setVariantEditData(id.variantsList);
         setSubCategoryName(id.subCategoryName);
         setEditItem(true);
         setVariantFields(id.variantsList)
+        addVariantFields();
     };
     const getAllUnits = async () => {
         try {
@@ -646,6 +693,7 @@ function Dashboard() {
         setItemData(updatedItemData);
         handleClose();
     };
+    const handlePriceEditMode = () => setEditPriceMode(false)
     const handleEditPrice = async () => {
         const token = localStorage.getItem('token');
 
@@ -686,7 +734,7 @@ function Dashboard() {
         setVariantEditData(updatedVariants);
     };
     const handleUpdateVariantsData = async () => {
-        const token = localStorage.getItem('userInfo.token');
+        const token = localStorage.getItem('token');
         const newData = {
             itemName: varinatsItemObject.itemName,
             itemDescription: varinatsItemObject.itemDescription,
@@ -705,12 +753,14 @@ function Dashboard() {
                     Authorization: `Bearer ${token}`
                 }
             })
-            if (response.data === 'Item Updated Successfully') {
-                setSuccess(true)
-                setManualVariantsPopUp(false)
-                getAllItems(menuId);
+            if (response?.data === 'Item Updated Successfully') {
+                setSuccess(response.data);
+                setOpen(true);
+                setVariantFields([]);
                 getAllCategory();
-                getAllUnit();
+                handleSubCategoryClick(finalSelected);
+                getAllUnits();
+                handleClose();
             }
         } catch (error) {
             setError(error?.response?.data || 'Network Error!!!...')
@@ -742,17 +792,37 @@ function Dashboard() {
     const handleChangeCopySubCategory = () => {
         setCopyMenuCheckBox(true)
     }
+    const handlePriceManualChange = (data, price) => {
+        const updatedVariantFields = variantFields.map(val => {
+            if (val.unit === data.unit) {
+                return { ...val, price: price };
+            }
+            return val;
+        });
+        setVariantFields(updatedVariantFields);
+        if (editData) {
+            const variants = editData.variantsList;
+            const updatedVariantFields = variants.map(val => {
+                if (val.unit === data.unit) {
+                    return { ...val, price: price };
+                }
+                return val;
+            });
+            setUpdatedVariantsName(updatedVariantFields)
+        }
+    }
+
     return (
         <div className='BilingDashboardContainer p-3 '>
             <div className='col-span-12'>
                 <div className='productTableSubContainer'>
                     <div className='h-full grid grid-cols-12'>
-                        <div className='h-full col-span-10'>
-                            <div className='grid grid-cols-12  px-6 overflow-x-auto h-full' style={{ whiteSpace: 'nowrap' }}>
+                        <div className={`h-full ${editPriceMode ? 'col-span-9' : 'col-span-10'}`}>
+                            <div className='grid grid-cols-12 px-6 overflow-x-auto h-full' style={{ whiteSpace: 'nowrap' }}>
                                 {menuCategory.map((menu, index) => (
                                     <div
                                         key={index}
-                                        className={`col-span-1  ${tab === index ? 'productTabAll' : 'productTab'}`}
+                                        className={`col-span-1 ${tab === index ? 'productTabAll' : 'productTab'}`}
                                         onClick={() => {
                                             getAllItems(menu.menuCategoryId);
                                             setTab(index);
@@ -760,39 +830,54 @@ function Dashboard() {
                                             setDataSearch([]);
                                             setMenuId(menu.menuCategoryId);
                                         }}
-                                        style={{ minWidth: 'fit-content' }} // Ensures each tab has minimum width
+                                        style={{ minWidth: 'fit-content' }}
                                     >
                                         <div className='statusTabtext'>{menu.menuCategoryName}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div className='flex gap-4 col-span-2 justify-self-end pr-3  h-full'>
-                            <div className='self-center '>
-                                <button className='addProductBtn' onClick={handleOpen}>Add Product</button>
-                            </div>
-                        </div>
+                        {
+                            !editPriceMode ? (
+                                <div className='flex gap-4 col-span-2 justify-self-end pr-3 h-full'>
+                                    <div className='self-center'>
+                                        <button className='addProductBtn' onClick={handleOpen}>Add Product</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className='flex gap-4 col-span-3 justify-self-end pr-3 w-full h-full'>
+                                    <div className='self-center w-full'>
+                                        <button className='addProductBtn w-full' onClick={handleEditPrice}>Save</button>
+                                    </div>
+                                    <div className='self-center w-full'>
+                                        <button className='w-full  cancelButtonEdiPriceMode' onClick={handlePriceEditMode}>Cancel</button>
+                                    </div>
+                                </div>
+                            )
+                        }
                     </div>
                 </div>
-
             </div>
             <ToastContainer />
             <div className="maina_box">
                 {subCategories.length > 0 && (
-                    <div className="sidebar overflow-y-auto blackCountLogoWrp shadow-2xl py-4 my-4 mr-4">
+                    <div className="sidebar overflow-y-auto blackCountLogoWrp shadow-2xl py-4 my-4 mr-4 static">
                         {subCategories.map(subcategory => (
                             <div
                                 key={subcategory.subCategoryId}
                                 className={`sidebar_menu my-2  cursor-pointer rounded-lg p-2 hover:bg-blue-600 text-start text-lg ${clickedSubCategory === subcategory.subCategoryId ? 'ClickedBlueBg' : ''}`}
-                                onClick={() => handleSubCategoryClick(subcategory.subCategoryId)}
+                                onClick={() => {
+                                    if (!editPriceMode) {
+                                        handleSubCategoryClick(subcategory.subCategoryId)
+                                    }
+                                }}
                             >
                                 {subcategory.subCategoryName}
                             </div>
                         ))}
                     </div>
                 )}
-                <TableContainer className='mt-4 '>
-
+                <TableContainer className=' '>
                     <div className="mt-4">
                         {!editPriceMode && !itemDataNull && (
                             <div>
@@ -822,66 +907,61 @@ function Dashboard() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className='flex justify-end w-full'>
-                                            <div>
-                                                <button onClick={handleEditPrice} className="bg-blue-500  text-white py-2 px-4 rounded-lg mr-2">Save</button>
-                                            </div>
-                                            <div>
-                                                <button onClick={() => setEditPriceMode(false)} className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">Cancel</button>
-                                            </div>
-                                        </div>
+                                        <></>
                                     )}
                                 </div>
-                                <TableContainer sx={{ borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', paddingLeft: '12px', paddingRight: '12px', paddingTop: '12px' }} component={Paper}>
-                                    <Table sx={{ minWidth: 650 }} aria-label="simple table">
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell className=''>No.</TableCell>
-                                                <TableCell>Name</TableCell>
-                                                <TableCell >Gujarati Name</TableCell>
-                                                <TableCell >Short Code</TableCell>
-                                                <TableCell >Short Name</TableCell>
-                                                <TableCell >Variant Details</TableCell>
-                                                <TableCell >Description</TableCell>
-                                                <TableCell align='right' >Actions</TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody className='bg-white'>
-                                            {itemData.map((item, index) => (
-                                                <TableRow key={index}  >
-                                                    <TableCell component="th" scope="row" style={{ maxWidth: '15px', width: '15px' }}>
-                                                        {index + 1}
-                                                    </TableCell>
-                                                    <TableCell component="th" scope="row" className='table_row'>
-                                                        {item.itemName}
-                                                    </TableCell>
-                                                    <TableCell component="th" scope="row" className='table_row'>
-                                                        {item.itemGujaratiName}
-                                                    </TableCell>
-                                                    <TableCell component="th" scope="row" className='table_row'>
-                                                        {item.itemCode}
-                                                    </TableCell>
-                                                    <TableCell component="th" scope="row" className='table_row'>
-                                                        {item.itemShortKey}
-                                                    </TableCell>
-                                                    <TableCell component="th" scope="row" className='table_row'>
-                                                        {item?.variantsList[0]?.price}
-                                                    </TableCell>
-                                                    <TableCell component="th" scope="row" className='table_row'>
-                                                        {item.itemDescription}
-                                                    </TableCell>
-                                                    <TableCell component="th" scope="row" className='table_row'>
-                                                        <div className="flex w-100">
-                                                            <div onClick={() => handleEditItem(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-blue-600 '><BorderColorIcon className='text-gray-600 table_icon2' /></div>
-                                                            <div onClick={() => handleItemDelete(item.itemId)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-red-600'><DeleteOutlineOutlinedIcon className='text-gray-600 table_icon2 ' /></div>
-                                                            <div onClick={() => handleManualVariantsname(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-green-600'><p className='text-gray-600 table_icon2 text-center font-bold text-base' >V</p></div>
-                                                        </div>
-                                                    </TableCell>
+                                <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+                                    <TableContainer sx={{ borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', paddingLeft: '12px', paddingRight: '12px', paddingTop: '12px', maxHeight: 550 }} component={Paper}>
+                                        <Table stickyHeader aria-label="sticky table">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell className=''>No.</TableCell>
+                                                    <TableCell className=''>Name</TableCell>
+                                                    <TableCell >Gujarati Name</TableCell>
+                                                    <TableCell >Short Code</TableCell>
+                                                    <TableCell >Short Name</TableCell>
+                                                    <TableCell >Variant Details</TableCell>
+                                                    <TableCell >Description</TableCell>
+                                                    <TableCell align='right' >Actions</TableCell>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
+                                            </TableHead>
+                                            <TableBody className='bg-white mainBar overflow-y-auto'>
+                                                {itemData.map((item, index) => (
+                                                    <TableRow key={index}  >
+                                                        <TableCell component="th" scope="row" style={{ maxWidth: '15px', width: '15px' }}>
+                                                            {index + 1}
+                                                        </TableCell>
+                                                        <TableCell component="th" scope="row" className='table_row'>
+                                                            {item.itemName}
+                                                        </TableCell>
+                                                        <TableCell component="th" scope="row" className='table_row'>
+                                                            {item.itemGujaratiName}
+                                                        </TableCell>
+                                                        <TableCell component="th" scope="row" className='table_row'>
+                                                            {item.itemCode}
+                                                        </TableCell>
+                                                        <TableCell component="th" scope="row" className='table_row'>
+                                                            {item.itemShortKey}
+                                                        </TableCell>
+                                                        <TableCell component="th" scope="row" className='table_row'>
+                                                            {item?.variantsList[0]?.price}
+                                                        </TableCell>
+                                                        <TableCell component="th" scope="row" className='table_row'>
+                                                            {item.itemDescription}
+                                                        </TableCell>
+                                                        <TableCell component="th" scope="row" className='table_row'>
+                                                            <div className="flex w-100">
+                                                                <div onClick={() => handleEditItem(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-blue-600 '><BorderColorIcon className='text-gray-600 table_icon2' /></div>
+                                                                <div onClick={() => handleItemDelete(item.itemId)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-red-600'><DeleteOutlineOutlinedIcon className='text-gray-600 table_icon2 ' /></div>
+                                                                <div onClick={() => handleManualVariantsname(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-green-600'><p className='text-gray-600 table_icon2 text-center font-bold text-base' >V</p></div>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
                             </div>
                         )
                         }
@@ -891,8 +971,8 @@ function Dashboard() {
                                     <TableHead>
                                         <TableRow>
                                             <TableCell className='px-0'>No.</TableCell>
-                                            <TableCell>Name</TableCell>
-                                            <TableCell style={{ width: '100%' }}>Variants</TableCell>
+                                            <TableCell className='px-0' style={{ width: '30%' }}>Name</TableCell>
+                                            <TableCell style={{ width: '70%' }}>Variants</TableCell>
                                             <TableCell align="right"></TableCell>
                                             <TableCell align="right"></TableCell>
                                         </TableRow>
@@ -900,16 +980,16 @@ function Dashboard() {
                                     <TableBody className='bg-white'>
                                         {itemData.map((item, itemIndex) => (
                                             <TableRow key={itemIndex}>
-                                                <TableCell component="th" scope="row" className='table_row w-3'>
+                                                <TableCell component="th" scope="row" className=' w-3' style={{ maxWidth: '15px', width: '15px' }}>
                                                     {itemIndex + 1}
                                                 </TableCell>
-                                                <TableCell component="th" scope="row" className='table_row'>
+                                                <TableCell component="th" scope="row" style={{ maxWidth: '500px', width: '900px' }}>
                                                     {item.itemName}
                                                 </TableCell>
                                                 <TableCell component="th" scope="row" className='table_row'>
-                                                    <div className="flex gap-4">
+                                                    <div className="flex gap-1">
                                                         {item?.variantsList.map((variant, variantIndex) => (
-                                                            <FormControl sx={{ m: 1, width: '25ch' }} variant="standard" className='w-full formControl' key={variantIndex}>
+                                                            <FormControl sx={{ m: 1 }} variant="standard" className='editPriceFormControl' key={variantIndex}>
                                                                 <TextField
                                                                     variant='standard'
                                                                     id={`standard-adornment-weight-${itemIndex}-${variantIndex}`}
@@ -920,7 +1000,7 @@ function Dashboard() {
                                                                     }}
                                                                     value={variant.price}
                                                                     onChange={(event) => handleVariantPriceChange(event, itemIndex, variantIndex)}
-                                                                    className='w-full'
+                                                                    className='w-48'
                                                                     autoComplete="off"
                                                                 />
                                                             </FormControl>
@@ -959,10 +1039,10 @@ function Dashboard() {
                 aria-describedby="modal-modal-description"
             >
                 <Box sx={style} className='addProdutModal'>
-                    <div className="text-2xl ">
+                    <div className="text-xl p-1">
                         {editData ? 'Edit Item' : 'Add Item'}
                     </div>
-                    <hr className='my-6' />
+                    <hr className='my-2 mb-4' />
                     <div className="grid grid-cols-12 gap-4">
                         <div className="col-span-2">
                             <TextField
@@ -974,7 +1054,7 @@ function Dashboard() {
                                 variant="outlined"
                                 value={editData ? editData.itemCode : fullData.itemCode}
                                 onChange={(e) => {
-                                    itemData
+                                    editData
                                         ?
                                         setEditData({ ...editData, itemCode: e.target.value })
                                         :
@@ -995,7 +1075,7 @@ function Dashboard() {
                                 helperText={allFormValidation.itemName ? 'Item Name is required' : ''}
                                 value={editData ? editData.itemName : fullData.itemName}
                                 onChange={(e) => {
-                                    itemData
+                                    editData
                                         ?
                                         setEditData({ ...editData, itemName: e.target.value })
                                         :
@@ -1008,10 +1088,14 @@ function Dashboard() {
                         <div className="col-span-3">
                             <ReactTransliterate
                                 id="outlined-basic"
-                                value={fullData.itemGujaratiName}
+                                value={editData ? editData.itemGujaratiName : fullData.itemGujaratiName}
                                 onChangeText={(e) => {
-                                    setFullData({ ...fullData, itemGujaratiName: e })
-                                    setAllFormValidation({ ...allFormValidation, itemGujaratiName: false })
+                                    editData
+                                        ?
+                                        setEditData({ ...editData, itemGujaratiName: e })
+                                        :
+                                        setFullData({ ...fullData, itemGujaratiName: e })
+                                    setAllFormValidation({ ...allFormValidation, itemName: false })
                                 }}
                                 variant="outlined"
                                 className={`w-full border p-4 rounded-md border-gray-300 ${allFormValidation.itemGujaratiName ? 'border-red-500' : ''}`}
@@ -1032,9 +1116,16 @@ function Dashboard() {
                                 helperText={allFormValidation.itemShortKey ? 'Item Short is required' : ''}
                                 label="Short Code"
                                 variant="outlined"
-                                value={fullData.itemShortKey}
-                                onChange={(e) => setFullData({ ...fullData, itemShortKey: e.target.value })}
                                 autoComplete="off"
+                                value={editData ? editData.itemShortKey : fullData.itemShortKey}
+                                onChange={(e) => {
+                                    editData
+                                        ?
+                                        setEditData({ ...editData, itemShortKey: e.target.value })
+                                        :
+                                        setFullData({ ...fullData, itemShortKey: e.target.value })
+                                    setAllFormValidation({ ...allFormValidation, itemShortKey: false })
+                                }}
                             />
                         </div>
                         <div className="col-span-2">
@@ -1044,12 +1135,18 @@ function Dashboard() {
                                 error={allFormValidation.itemName}
                                 helperText={allFormValidation.itemName ? 'Item Price is required' : ''}
                                 label="Price"
-                                value={price || ''}
                                 variant="outlined"
+                                disabled={disabled ? true : false}
+                                value={editData ? editData?.variantsList[0]?.price : price || ''}
                                 onChange={(e) => {
-                                    setPrice(e.target.value)
-                                    addDefaultVariant(e.target.value)
-                                    setAllFormValidation({ ...allFormValidation, itemName: false })
+                                    if (editData) {
+                                        setDisabled(true)
+                                    }
+                                    else {
+                                        setPrice(e.target.value)
+                                        addDefaultVariant(e.target.value)
+                                    }
+                                    setAllFormValidation({ ...allFormValidation, itemShortKey: false })
                                 }}
                                 autoComplete="off"
                             />
@@ -1061,15 +1158,16 @@ function Dashboard() {
                                     labelId="demo-simple-select-label"
                                     id="demo-simple-select"
                                     label="Sub Category"
-                                    value={fullData.itemSubCategory}
                                     className={`w-full ${allFormValidation.itemSubCategory ? 'border-red-500 rela ' : ''}`}
                                     error={allFormValidation.itemSubCategory}
                                     autoComplete="off"
+                                    value={editData ? editData.itemSubCategory : fullData.itemSubCategory}
                                     onChange={(e) => {
-                                        setFullData(prevItemData => ({
-                                            ...prevItemData,
-                                            itemSubCategory: e.target.value
-                                        }));
+                                        editData
+                                            ?
+                                            setEditData({ ...editData, itemSubCategory: e.target.value })
+                                            :
+                                            setFullData({ ...fullData, itemSubCategory: e.target.value })
                                         setAllFormValidation({ ...allFormValidation, itemSubCategory: false })
                                     }}
                                 >
@@ -1085,87 +1183,92 @@ function Dashboard() {
                                 className={`w-full ${allFormValidation.itemDescription ? 'border-red-500' : ''}`}
                                 label="Item Description"
                                 variant="outlined"
-                                value={fullData.itemDescription}
+                                value={editData ? editData.itemDescription : fullData.itemDescription}
                                 onChange={(e) => {
-                                    setFullData({ ...fullData, itemDescription: e.target.value })
+                                    editData
+                                        ?
+                                        setEditData({ ...editData, itemDescription: e.target.value })
+                                        :
+                                        setFullData({ ...fullData, itemDescription: e.target.value })
                                     setAllFormValidation({ ...allFormValidation, itemDescription: false })
                                 }}
                                 autoComplete="off"
                             />
                         </div>
                     </div>
-                    <div className="text-2xl my-6">
-                        Add Unit
+                    <div className="text-xl p-1 mt-6">
+                        {editData ? 'Edit Unit' : 'Add Unit'}
                     </div>
-                    <hr className='my-6' />
+                    <hr className='my-2 mb-4' />
                     <div className="flex w-full gap-6 ">
-                        {!editData ? (
-                            <div className='flex gap-6 w-3/6 items-center'>
-                                <FormControl fullWidth>
-                                    <InputLabel id="demo-simple-select-label">Unit</InputLabel>
-                                    <Select
-                                        labelId="demo-simple-select-label"
-                                        id="demo-simple-select"
-                                        label="Age"
-                                        value={unit.unit}
-                                        error={allFormValidation.unit ? true : false}
-                                        helperText={allFormValidation.unit ? 'Unit is required' : ''}
-
-                                        onChange={(e) => {
-                                            setUnit({ ...unit, unit: e.target.value })
-                                            setAllFormValidation({ ...allFormValidation, unit: false })
-                                        }}
-                                    >
-                                        {getAllUnit && getAllUnit.map((unit, index) => (
-                                            <MenuItem key={index} value={unit}>{unit}</MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                                <TextField
-                                    id="outlined-basic"
-                                    className='w-full'
-                                    label="Unit Price"
-                                    value={unit.price}
-                                    variant="outlined"
-                                    error={allFormValidation.price ? true : false}
-                                    helperText={allFormValidation.price ? 'Price is required' : ''}
+                        <div className='flex gap-6 w-3/6 items-start mt-2 '>
+                            <FormControl fullWidth>
+                                <InputLabel id="demo-simple-select-label">Unit</InputLabel>
+                                <Select
+                                    labelId="demo-simple-select-label"
+                                    id="demo-simple-select"
+                                    label="Age"
+                                    value={unit.unit}
+                                    error={allFormValidation.unit ? true : false}
+                                    helperText={allFormValidation.unit ? 'Unit is required' : ''}
                                     onChange={(e) => {
-                                        setUnit({ ...unit, price: e.target.value })
-                                        setAllFormValidation({ ...allFormValidation, price: false })
+                                        setUnit({ ...unit, unit: e.target.value })
+                                        setAllFormValidation({ ...allFormValidation, unit: false })
                                     }}
-                                    autoComplete="off"
-                                />
-                                <div className="w-full">
-                                    <button onClick={addVariantFields} className="addCategorySaveBtn ">Add</button>
-                                </div>
+                                    inputRef={addingUnitName}
+                                >
+                                    {getAllUnit && getAllUnit.map((unit, index) => (
+                                        <MenuItem key={index} value={unit}>{unit}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <TextField
+                                id="outlined-basic"
+                                className='w-full'
+                                label="Unit Price"
+                                value={unit.price}
+                                variant="outlined"
+                                error={allFormValidation.price ? true : false}
+                                helperText={allFormValidation.price ? 'Price is required' : ''}
+                                onChange={(e) => {
+                                    setUnit({ ...unit, price: e.target.value })
+                                    setAllFormValidation({ ...allFormValidation, price: false })
+                                }}
+                                autoComplete="off"
+                            />
+                            <div className="w-full">
+                                <button onClick={addVariantFields} className="addCategorySaveBtn ">Add</button>
                             </div>
-                        ) : (
-                            <></>
-                        )
-                    }
+                        </div>
+                        <Divider orientation="vertical" flexItem className='bg-black' />
                         <div>
                             {variantFields?.map((period, index) => (
-                                <div key={index} className="flex w-full mt-2  gap-3 items-center">
-                                    <div className='w-1/2'>
+                                <div key={index} className="flex w-full mb-6 mt-2  gap-6 items-center">
+                                    <div className='indexDisplay font-normal w-2/12 mx-4 text-4xl'>
+                                        {index + 1}
+                                    </div>
+                                    <div className='w-full'>
                                         <TextField
                                             id="outlined-basic"
                                             className='w-full'
                                             label="Unit Name"
                                             variant="outlined"
                                             disabled
-                                            value={period.variantName}
+                                            value={period?.unit}
                                             autoComplete="off"
                                         />
                                     </div>
-                                    <div className='w-1/2'>
+                                    <div className='w-full'>
                                         <TextField
                                             id="outlined-basic"
                                             className='w-full'
                                             label="Unit Price"
                                             variant="outlined"
-                                            disabled
-                                            value={period.variantPrice}
+                                            value={period?.price}
                                             autoComplete="off"
+                                            onChange={(e) => {
+                                                handlePriceManualChange(period, e.target.value)
+                                            }}
                                         />
                                     </div>
                                     <div className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 h-11 text-center w-11 hover:bg-red-600 hover:font-white' onClick={() => handleDelete(index)}>
@@ -1173,9 +1276,10 @@ function Dashboard() {
                                     </div>
                                 </div>
                             ))}
+
                         </div>
                     </div>
-                    <div className="flex gap-6 mt-6 w-full justify-end px-4">
+                    <div className="flex gap-9 mt-6 w-full mr-7 justify-end px-4">
                         <div className="w-1/5">
                             <button onClick={handleSUbmitForm} className="addCategorySaveBtn ml-4">Save</button>
                         </div>
@@ -1185,209 +1289,6 @@ function Dashboard() {
                     </div>
                 </Box>
             </Modal>
-            {/* <Modal
-                open={editItem}
-                onClose={handleClose}
-                aria-labelledby="modal-modal-title"
-                aria-describedby="modal-modal-description"
-            >
-                <Box sx={style} className='addProdutModal'>
-                    <div className="text-2xl font-bold">
-                        Edit Product
-                    </div>
-                    <hr className='my-6' />
-                    <div className="grid grid-cols-12 gap-4">
-                        <div className="col-span-2 ">
-                            <TextField
-                                id="outlined-basic"
-                                className='w-full'
-                                label="Item Name"
-                                variant="outlined"
-                                value={varinatsItemObject?.itemName}
-                                onChange={(e) => {
-                                    setFullData({ ...fullData, itemName: e.target.value })
-                                }}
-                                autoComplete="off"
-                            />
-                        </div>
-                        <div className="col-span-2">
-                            <TextField
-                                id="outlined-basic"
-                                className='w-full'
-                                label="Item Gujarati Name"
-                                variant="outlined"
-                                value={editData?.itemGujaratiName}
-                                onChange={(e) => setFullData({ ...fullData, itemGujaratiName: e.target.value })}
-                                autoComplete="off"
-                            />
-                        </div>
-                        <div className="col-span-2">
-                            <TextField
-                                id="outlined-basic"
-                                className='w-full'
-                                label="Item Code"
-                                variant="outlined"
-                                value={editData?.itemCode}
-                                onChange={(e) => setFullData({ ...fullData, itemCode: e.target.value })}
-                                autoComplete="off"
-                            />
-                        </div>
-                        <div className="col-span-2">
-                            <TextField
-                                id="outlined-basic"
-                                className='w-full'
-                                label="Item Short Code"
-                                variant="outlined"
-                                value={editData?.itemShortKey}
-                                onChange={(e) => setFullData({ ...fullData, itemShortKey: e.target.value })}
-                                autoComplete="off"
-                            />
-                        </div>
-                        <div className="col-span-2">
-                            <TextField
-                                id="outlined-basic"
-                                className='w-full'
-                                label="Price"
-                                variant="outlined"
-                                value={editData?.variantsList[0]?.price}
-                                onChange={(e) => addDefaultVariant(e.target.value)}
-                                autoComplete="off"
-                            />
-                        </div>
-                        <div className="col-span-2">
-                            <FormControl fullWidth>
-                                <InputLabel id="demo-simple-select-label">Sub Category</InputLabel>
-                                <Select
-                                    labelId="demo-simple-select-label"
-                                    id="demo-simple-select"
-                                    label="Sub Category"
-                                    value={subCategoryName}
-                                    onChange={(e) => {
-                                        const selectedSubCategory = subCategories.find(category => category.subCategoryName === e.target.value);
-                                        if (selectedSubCategory) {
-                                            setFullData(prevItemData => ({
-                                                ...prevItemData,
-                                                itemSubCategory: selectedSubCategory.subCategoryId
-                                            }));
-                                        }
-                                    }}
-                                    autoComplete="off"
-                                >
-                                    {subCategories.map((category, index) => (
-                                        <MenuItem key={index} value={category.subCategoryName}>{category.subCategoryName}</MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </div>
-                        <div className="col-span-4">
-                            <TextField
-                                id="outlined-basic"
-                                className='w-full'
-                                label="Item Description"
-                                variant="outlined"
-                                value={editData?.itemDescription}
-                                onChange={(e) => setFullData({ ...fullData, itemDescription: e.target.value })}
-                                autoComplete="off"
-                            />
-                        </div>
-                    </div>
-                    <div className="text-2xl my-6 font-bold">
-                        Add Unit
-                    </div>
-                    <hr className='my-6' />
-                    <div className="flex w-full gap-6">
-                        <div className="w-full">
-                            <div className="flex gap-4 w-full">
-                                <div className='w-full'>
-                                    <FormControl fullWidth>
-                                        <InputLabel id="demo-simple-select-label">Variants Name</InputLabel>
-                                        <Select
-                                            labelId="demo-simple-select-label"
-                                            id="demo-simple-select"
-                                            label="Variants Name"
-                                            className='w-full'
-                                            autoComplete="off"
-                                            onChange={(e) => {
-                                                setSecondVariantData({ ...secondVariantData, unit: e.target.value });
-                                            }}
-                                        >
-                                            {getAllUnit && getAllUnit.map((unit, index) => (
-                                                <MenuItem key={index} value={unit}>{unit}</MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </div>
-                                <div className='w-full'>
-                                    <TextField
-                                        id="outlined-basic"
-                                        label="Price"
-                                        variant="outlined"
-                                        onChange={(e) => { setSecondVariantData({ ...secondVariantData, price: e.target.value }) }}
-                                        autoComplete="off"
-                                    />
-                                </div>
-                                <div className='w-full'>
-                                    <button onClick={handleSecondAddVarinats} className='w-full mt-2 addProductBtn'>Add</button>
-                                </div>
-                            </div>
-                            <hr className="my-6" />
-                        </div>
-                        <div className='w-full'>
-                            {variantEditData.map((variant, index) => (
-                                <div key={index} className="flex gap-6 my-3 justify-around">
-                                    <div className='w-full'>
-                                        <Select
-                                            labelId="demo-simple-select-label"
-                                            id="demo-simple-select"
-                                            label="Variants Name"
-                                            className='w-full'
-                                            disabled
-                                            value={variant.unit}
-                                            autoComplete="off"
-                                        >
-                                            {getAllUnit && getAllUnit.map((unit, index) => (
-                                                <MenuItem key={index} value={unit}>{unit}</MenuItem>
-                                            ))}
-                                        </Select>
-
-                                    </div>
-                                    <div className='w-full'>
-                                        <TextField
-                                            id="outlined-basic"
-                                            label="Price"
-                                            variant="outlined"
-                                            disabled
-                                            value={variant.price}
-                                            autoComplete="off"
-                                        />
-                                    </div>
-                                    <div className="">
-                                        <div className="flex gap-4">
-                                            <div>
-                                                <Switch
-                                                    color="success"
-                                                    defaultChecked={variant.status}
-                                                />
-                                            </div>
-                                            <div className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-red-600' onClick={() => handleDeleteVariant(index)}>
-                                                <DeleteOutlineOutlinedIcon className='text-gray-600 table_icon2 ' />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="flex gap-6 mt-6 w-full justify-end">
-                        <div className="w-1/5">
-                            <button onClick={handleUpdateVariantsData} className="addCategorySaveBtn ml-4">Save</button>
-                        </div>
-                        <div className="w-1/5">
-                            <button onClick={handleClose} className="addCategoryCancleBtn ml-4 bg-gray-700">Cancel</button>
-                        </div>
-                    </div>
-                </Box>
-            </Modal> */}
             <Modal
                 open={editPricePopUp}
                 onClose={handleClose}
@@ -1455,10 +1356,12 @@ function Dashboard() {
                             />
                         </div>
                     )}
-                    <div className="mt-5 w-full">
-                        <div className="flex w-full">
-                            <button onClick={editPriceValue} className="bg-blue-500 w-2/4 text-white py-2 px-4 rounded-lg mr-2">Save</button>
-                            <button onClick={handleClose} className="bg-gray-300 text-gray-800 py-2 px-4 w-2/4 rounded-lg">Cancel</button>
+                    <div className="flex gap-6 mt-6 w-full">
+                        <div className="w-full">
+                            <button onClick={editPriceValue} className="addCategorySaveBtn ">Save</button>
+                        </div>
+                        <div className="w-full">
+                            <button onClick={handleClose} className="addCategoryCancleBtn  bg-gray-700">Cancel</button>
                         </div>
                     </div>
                 </Box>
@@ -1566,14 +1469,22 @@ function Dashboard() {
                         </div>
                         {variantMode.isView && (
                             <div className="flex gap-6 mt-6 w-full">
-                                <button onClick={() => setVariantMode({ isEdit: true })} className="bg-blue-500 w-2/4 text-white py-2 px-4 rounded-lg mr-2">Edit</button>
-                                <button onClick={handleClose} className="bg-gray-300 text-gray-800 py-2 px-4 w-2/4 rounded-lg">Cancel</button>
+                                <div className="w-full">
+                                    <button onClick={() => setVariantMode({ isEdit: true })} className="addCategorySaveBtn ">Edit</button>
+                                </div>
+                                <div className="w-full">
+                                    <button onClick={handleClose} className="addCategoryCancleBtn ml-4 bg-gray-700">Cancel</button>
+                                </div>
                             </div>
                         )}
                         {variantMode.isEdit && (
                             <div className="flex gap-6 mt-6 w-full">
-                                <button onClick={handleUpdateVariantsData} className="bg-blue-500 w-1/2 text-white py-2 px-4 rounded-lg mr-2">Save</button>
-                                <button onClick={handleClose} className="bg-gray-300 text-gray-800 py-2 px-4 w-1/2 rounded-lg">Cancel</button>
+                                <div className="w-full">
+                                    <button onClick={handleUpdateVariantsData} className="addCategorySaveBtn ">Save</button>
+                                </div>
+                                <div className="w-full">
+                                    <button onClick={handleClose} className="addCategoryCancleBtn ml-4 bg-gray-700">Cancel</button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -1617,9 +1528,17 @@ function Dashboard() {
                     <div className="flex gap-2 mt-6 w-11/12">
                         <input onChange={handleChangeCopySubCategory} type="checkbox" name="" id="" />Just Copy sub category
                     </div>
-                    <div className="flex gap-6 mt-6 w-11/12">
+                    {/* <div className="flex gap-6 mt-6 w-11/12">
                         <button onClick={handleUpdateVariantsData} className="bg-blue-500 w-1/2 text-white py-2 px-4 rounded-lg mr-2">Save</button>
                         <button onClick={handleClose} className="bg-gray-300 text-gray-800 py-2 px-4 w-1/2 rounded-lg">Cancel</button>
+                    </div> */}
+                    <div className="flex gap-6 mt-6 w-full">
+                        <div className="w-1/5">
+                            <button onClick={handleUpdateVariantsData} className="addCategorySaveBtn ml-4">Save</button>
+                        </div>
+                        <div className="w-1/5">
+                            <button onClick={handleClose} className="addCategoryCancleBtn ml-4 bg-gray-700">Cancel</button>
+                        </div>
                     </div>
                 </Box>
             </Modal>

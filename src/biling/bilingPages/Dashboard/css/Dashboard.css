@@ -83,6 +83,9 @@
     color: white;
     padding: 20px;
 }
+.editPriceFormControl{
+    width: 14rem !important;
+}
 
 .blackCountLogoWrp {
     background: linear-gradient(195deg, rgb(66, 66, 74), rgb(25, 25, 25));
@@ -211,6 +214,14 @@
     right: -28px;
     left: auto;
     background-color: #f44336;
+}
+.cancelButtonEdiPriceMode{
+    height: 40px;
+    padding: 5px 15px;
+    text-align: center;
+    border-radius: 5px;
+    background-color: rgb(55 65 81) !important;
+    color: white;
 }
 
 #button-2 .checkbox:checked+.knobs:before {

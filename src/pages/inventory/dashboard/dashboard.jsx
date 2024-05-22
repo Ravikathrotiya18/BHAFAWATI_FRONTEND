@@ -51,14 +51,14 @@ function Dashboard() {
         }
     }
     const goToBilling = () => {
-        // const auth = new Date(expirationTime) > new Date() && (role == 1) ? true : false
-        // if (auth) {
+        const auth = new Date(expirationTime) > new Date() && (role == 1) ? true : false
+        if (auth) {
             navigate('/billing/Dashboard')
-        // } else {
-        //     if (window.confirm("You are not Authorised. You want to Login again ?")) {
-        //         navigate('/login')
-        //     }
-        // }
+        } else {
+            if (window.confirm("You are not Authorised. You want to Login again ?")) {
+                navigate('/login')
+            }
+        }
     }
     const goToExpense = () => {
         const auth = new Date(expirationTime) > new Date() && (role == 1 || role == 2) ? true : false

@@ -90,7 +90,7 @@ function MenuCategoey() {
             });
             setGetAllUnit(response.data)
         } catch (error) {
-            setError(error.response.data)
+            setError(error?.response?.data || 'Network Error !!!...')
         }
     }
 
@@ -208,7 +208,7 @@ function MenuCategoey() {
                     setError('Unit is Already In Use')
                     autFocus.current && autFocus.current.focus();
                 }
-                setError(error.response.data)
+                setError(error?.response?.data || 'Network Error !!!...')
             }
         }
     }
@@ -234,7 +234,7 @@ function MenuCategoey() {
                 setError('Unit is Same No Change')
 
             }
-            setError(error.response.data)
+            setError(error?.response?.data || 'Network Error !!!...')
         }
     }
     const handleDeleteCategory = async (index) => {
@@ -260,7 +260,7 @@ function MenuCategoey() {
                     handleClose();
                 }
             } catch (error) {
-                setError(error.response.data)
+                setError(error?.response?.data || 'Network Error !!!...')
             }
         }
     }
