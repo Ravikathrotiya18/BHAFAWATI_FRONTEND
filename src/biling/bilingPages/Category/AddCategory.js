@@ -269,7 +269,7 @@ function AddCategory() {
                 <div className='tableContainerWrapper'>
                     <TableContainer className='bg-white px-4 pt-6 border-none rounded-xl mt-7'>
                         <Table aria-label="simple table" component={Paper} >
-                            <TableHead>
+                            <TableHead >
                                 <TableRow>
                                     <TableCell>No</TableCell>
                                     <TableCell>Name</TableCell>

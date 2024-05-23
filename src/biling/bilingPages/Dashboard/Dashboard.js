@@ -266,7 +266,6 @@ function Dashboard() {
         itemDescription: '',
         variantsList: []
     });
-    const [editButtonMenu, setEditButtonMenu] = useState('menuCategory_1713785180891')
     const [menuName, setMenuName] = useState('')
     const [copyMenuPopUp, setCopyMenuPopUp] = useState(false)
     const [copyMenuItems, setCopyMenuItems] = useState([])
@@ -348,7 +347,6 @@ function Dashboard() {
                 setError('Please Fill All Fields');
                 return;
             }
-
             const token = localStorage.getItem('token');
             let response;
 
@@ -487,11 +485,6 @@ function Dashboard() {
         }
     }
     const handleOpen = () => { setOpen(true); setDisabled(false) };
-    const filteredDataOfvariants = () => {
-        const data = variantFields.map(variant => variant.unit);
-        const filteredData = getAllUnit.filter(unit => !data.includes(unit));
-        setGetAllUnit(filteredData);
-    };
 
     const addVariantFields = () => {
         const formValidation = {
@@ -506,27 +499,24 @@ function Dashboard() {
             return;
         }
 
-        if (editData) {
-            const newVariant = { unit: unit.unit, price: unit.price, index: variantFields.length };
-            setVariantFields([...variantFields, newVariant]);
-            setEditData(prevState => ({
-                ...prevState,
-                variantsList: [...prevState.variantsList, { unit: unit.unit, price: unit.price, status: true }]
-            }));
-            setGetAllUnit(prevUnits => prevUnits.filter(u => u !== unit.unit));
-        } else {
-            const newVariant = { unit: unit.unit, price: unit.price, index: variantFields.length };
+        const newVariant = { unit: unit.unit, price: unit.price, index: variantFields.length };
 
-            setVariantFields([...variantFields, newVariant]);
+        setVariantFields(prevFields => [...prevFields, newVariant]);
+
+        if (editData) {
+            setUpdatedVariantsName(prevState => [
+                ...prevState,
+                { unit: unit.unit, price: unit.price, status: true }
+            ]);
+        } else {
             setFullData(prevState => ({
                 ...prevState,
                 variantsList: [...prevState.variantsList, { unit: unit.unit, price: unit.price, status: true }]
             }));
-            setGetAllUnit(prevUnits => prevUnits.filter(u => u !== unit.unit));
         }
+
+        setGetAllUnit(prevUnits => prevUnits.filter(u => u !== unit.unit));
         setUnit({ unit: '', price: '' });
-
-
         setAddVariant(true);
         addingUnitName.current && addingUnitName.current.focus();
     };
@@ -607,17 +597,18 @@ function Dashboard() {
             setError(error?.response?.data || 'Network Error!!!...')
         }
     };
-
-    const handleEditItem = (id) => {
-        setOpen(true)
-        setEditData(id);
-        setVariantsItemObject(id)
-        setVariantEditData(id.variantsList);
-        setSubCategoryName(id.subCategoryName);
+    const handleEditItem = (item) => {
+        setOpen(true);
+        setEditData(item);
+        setVariantsItemObject(item);
+        setVariantEditData(item.variantsList);
+        setSubCategoryName(item.subCategoryName);
         setEditItem(true);
-        setVariantFields(id.variantsList)
-        addVariantFields();
+        setVariantFields(item.variantsList);
+        setUpdatedVariantsName(item.variantsList);
+        setGetAllUnit(prevUnits => prevUnits.filter(u => !item.variantsList.some(variant => variant.unit === u)));
     };
+
     const getAllUnits = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -910,65 +901,80 @@ function Dashboard() {
                                         <></>
                                     )}
                                 </div>
-                                <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-                                    <TableContainer sx={{ borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', paddingLeft: '12px', paddingRight: '12px', paddingTop: '12px', maxHeight: 550 }} component={Paper}>
-                                        <Table stickyHeader aria-label="sticky table">
-                                            <TableHead>
-                                                <TableRow>
-                                                    <TableCell className=''>No.</TableCell>
-                                                    <TableCell className=''>Name</TableCell>
-                                                    <TableCell >Gujarati Name</TableCell>
-                                                    <TableCell >Short Code</TableCell>
-                                                    <TableCell >Short Name</TableCell>
-                                                    <TableCell >Variant Details</TableCell>
-                                                    <TableCell >Description</TableCell>
-                                                    <TableCell align='right' >Actions</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody className='bg-white mainBar overflow-y-auto'>
-                                                {itemData.map((item, index) => (
-                                                    <TableRow key={index}  >
-                                                        <TableCell component="th" scope="row" style={{ maxWidth: '15px', width: '15px' }}>
-                                                            {index + 1}
-                                                        </TableCell>
-                                                        <TableCell component="th" scope="row" className='table_row'>
-                                                            {item.itemName}
-                                                        </TableCell>
-                                                        <TableCell component="th" scope="row" className='table_row'>
-                                                            {item.itemGujaratiName}
-                                                        </TableCell>
-                                                        <TableCell component="th" scope="row" className='table_row'>
-                                                            {item.itemCode}
-                                                        </TableCell>
-                                                        <TableCell component="th" scope="row" className='table_row'>
-                                                            {item.itemShortKey}
-                                                        </TableCell>
-                                                        <TableCell component="th" scope="row" className='table_row'>
-                                                            {item?.variantsList[0]?.price}
-                                                        </TableCell>
-                                                        <TableCell component="th" scope="row" className='table_row'>
-                                                            {item.itemDescription}
-                                                        </TableCell>
-                                                        <TableCell component="th" scope="row" className='table_row'>
-                                                            <div className="flex w-100">
-                                                                <div onClick={() => handleEditItem(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-blue-600 '><BorderColorIcon className='text-gray-600 table_icon2' /></div>
-                                                                <div onClick={() => handleItemDelete(item.itemId)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-red-600'><DeleteOutlineOutlinedIcon className='text-gray-600 table_icon2 ' /></div>
-                                                                <div onClick={() => handleManualVariantsname(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-green-600'><p className='text-gray-600 table_icon2 text-center font-bold text-base' >V</p></div>
-                                                            </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                </Paper>
+                                <TableContainer
+            component={Paper}
+            sx={{
+                borderBottomLeftRadius: '10px',
+                borderBottomRightRadius: '10px',
+                paddingLeft: '12px',
+                paddingRight: '12px',
+                paddingTop: '12px',
+                maxHeight: 630,
+                overflowY: 'auto',
+            }}
+        >
+            <Table stickyHeader aria-label="sticky table" sx={{ minWidth: 750,overflow:'-moz-hidden-unscrollable' }}>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>No.</TableCell>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Gujarati Name</TableCell>
+                        <TableCell>Short Code</TableCell>
+                        <TableCell>Short Name</TableCell>
+                        <TableCell>Variant Details</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell align='right'>Actions</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {itemData.map((item, index) => (
+                        <TableRow key={index}>
+                            <TableCell style={{ maxWidth: '15px', width: '15px' }}>
+                                {index + 1}
+                            </TableCell>
+                            <TableCell>
+                                {item.itemName}
+                            </TableCell>
+                            <TableCell>
+                                {item.itemGujaratiName}
+                            </TableCell>
+                            <TableCell>
+                                {item.itemCode}
+                            </TableCell>
+                            <TableCell>
+                                {item.itemShortKey}
+                            </TableCell>
+                            <TableCell>
+                                {item?.variantsList[0]?.price}
+                            </TableCell>
+                            <TableCell>
+                                {item.itemDescription}
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex w-100">
+                                    <div onClick={() => handleEditItem(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-blue-600'>
+                                        <BorderColorIcon className='text-gray-600 table_icon2' />
+                                    </div>
+                                    <div onClick={() => handleItemDelete(item.itemId)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-red-600'>
+                                        <DeleteOutlineOutlinedIcon className='text-gray-600 table_icon2' />
+                                    </div>
+                                    <div onClick={() => handleManualVariantsname(item)} className='rounded-lg bg-gray-100 p-2 ml-4 cursor-pointer table_Actions_icon2 hover:bg-green-600'>
+                                        <p className='text-gray-600 table_icon2 text-center font-bold text-base'>V</p>
+                                    </div>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
                             </div>
                         )
                         }
                         {!itemDataNull && editPriceMode && (
                             <TableContainer sx={{ borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', paddingLeft: '12px', paddingRight: '12px', paddingTop: '12px' }} component={Paper}>
-                                <Table sx={{ minWidth: 650 }} aria-label="simple table">
-                                    <TableHead>
+                                <Table sx={{ minWidth: 650 }} aria-label="simple table" >
+                                    <TableHead >
                                         <TableRow>
                                             <TableCell className='px-0'>No.</TableCell>
                                             <TableCell className='px-0' style={{ width: '30%' }}>Name</TableCell>
@@ -1388,6 +1394,7 @@ function Dashboard() {
                                                 label="Variants Name"
                                                 className='w-full'
                                                 autoComplete="off"
+                                                value={secondVariantData.unit}
                                                 disabled={variantMode.isView ? true : false}
                                                 onChange={(e) => {
                                                     setSecondVariantData({ ...secondVariantData, unit: e.target.value });

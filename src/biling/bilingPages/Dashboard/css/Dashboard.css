@@ -1,3 +1,6 @@
+body{
+    overflow: hidden;
+}
 .css-1ex1afd-MuiTableCell-root {
     padding: 15px !important;
     padding-left: 17px !important;
@@ -7,6 +10,7 @@
 .table_row {
     width: 14% !important;
 }
+
 
 .table_Actions_icon2:hover .table_icon2 {
     color: white !important;
